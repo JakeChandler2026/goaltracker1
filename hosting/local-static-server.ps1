@@ -42,6 +42,8 @@ function Write-HttpResponse {
     "HTTP/1.1 $StatusCode $StatusText",
     "Content-Type: $ContentType",
     "Content-Length: $($Body.Length)",
+    "Cache-Control: no-store, max-age=0",
+    "Pragma: no-cache",
     "Connection: close",
     ""
   ) -join "`r`n"

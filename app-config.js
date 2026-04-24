@@ -1,6 +1,6 @@
 window.BishopGoalTrackerConfig = {
   runtimeMode: "supabase",
-  projectName: "Bishop Goal Tracker",
+  projectName: "Pathway to Christ",
   supabase: {
     url: "https://eeapmjwygwgtvhlwbcmo.supabase.co",
     anonKey: "sb_publishable_Uzq_F6cazXYiRQAF9S6_wg_40IAOVJP",

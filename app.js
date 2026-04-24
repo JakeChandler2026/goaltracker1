@@ -181,6 +181,7 @@ let activeRole = "youth";
 let activeUserAuthMode = "signin";
 let activeTemplateId = null;
 let activeYouthDashboardView = "goals";
+let activeGoalEditorId = null;
 let state = normalizeState(getFallbackState());
 let bootstrappedState = false;
 
@@ -206,15 +207,16 @@ function cloneStateSnapshot() {
 }
 
 function renderRuntimeBanner() {
+  if (elements.demoAccountsBox) {
+    elements.demoAccountsBox.classList.toggle("hidden", isSupabaseRuntime);
+  }
+
   if (!elements.runtimeBanner) {
     return;
   }
 
   const modeLabel = backendRuntime.runtimeMode === "supabase" ? "Supabase Mode" : "Demo Local Mode";
   elements.runtimeBanner.innerHTML = `<strong>${modeLabel}</strong><span>${storageAdapter.statusMessage || backendRuntime.statusMessage}</span>`;
-  if (elements.demoAccountsBox) {
-    elements.demoAccountsBox.classList.toggle("hidden", isSupabaseRuntime);
-  }
 }
 
 async function persistGoal(goal, options = {}) {
@@ -263,17 +265,31 @@ function normalizeState(rawState) {
     approvalStatus: user.approvalStatus || (user.role === "youth_leader" ? "approved" : "verified")
   }));
 
-  nextState.goals = nextState.goals.map((goal) => ({
-    ...goal,
-    points: normalizePointValue(goal.points),
-    deadline: normalizeGoalDeadline(goal),
-    subGoals: goal.subGoals.map((subGoal) => ({
-      id: subGoal.id,
-      title: subGoal.title,
-      repeatCount: Math.max(1, Number(subGoal.repeatCount || 1)),
-      completedUnits: normalizeCompletedUnits(subGoal)
-    }))
-  }));
+  nextState.goals = nextState.goals.map((goal) => {
+    const points = normalizePointValue(goal.points);
+    const completionApproved = Boolean(goal.leaderApproved);
+    const planApproved = typeof goal.goalApproved === "boolean"
+      ? goal.goalApproved
+      : points > 0 || completionApproved;
+
+    return {
+      ...goal,
+      points,
+      goalApproved: planApproved,
+      goalApprovedBy: goal.goalApprovedBy || (planApproved ? goal.leaderApprovedBy || "Leader" : null),
+      goalApprovedAt: goal.goalApprovedAt || (planApproved ? goal.completedAt || null : null),
+      leaderApproved: completionApproved,
+      leaderApprovedBy: goal.leaderApprovedBy || null,
+      completedAt: goal.completedAt || null,
+      deadline: normalizeGoalDeadline(goal),
+      subGoals: goal.subGoals.map((subGoal) => ({
+        id: subGoal.id,
+        title: subGoal.title,
+        repeatCount: Math.max(1, Number(subGoal.repeatCount || 1)),
+        completedUnits: normalizeCompletedUnits(subGoal)
+      }))
+    };
+  });
 
   nextState.goals.forEach((goal) => {
     goal.subGoals = goal.subGoals.map((subGoal) => ({
@@ -558,12 +574,16 @@ function addDraftChecklistItem(form) {
 }
 
 function buildGoalFromTemplate(template, userId, deadline = getDefaultGoalDeadline()) {
+  const sessionUser = getSessionUser();
   return {
     id: createId("goal"),
     userId,
     title: template.title,
     summary: template.summary,
     points: normalizePointValue(template.points),
+    goalApproved: Boolean(sessionUser && isWardAdmin(sessionUser)),
+    goalApprovedBy: sessionUser && isWardAdmin(sessionUser) ? sessionUser.name : null,
+    goalApprovedAt: sessionUser && isWardAdmin(sessionUser) ? getTodayDateString() : null,
     deadline,
     leaderApproved: false,
     leaderApprovedBy: null,
@@ -578,12 +598,16 @@ function buildGoalFromTemplate(template, userId, deadline = getDefaultGoalDeadli
 }
 
 function cloneGoalForUser(sourceGoal, userId, deadline = (sourceGoal.deadline && sourceGoal.deadline > getTodayDateString()) ? sourceGoal.deadline : getDefaultGoalDeadline()) {
+  const sessionUser = getSessionUser();
   return {
     id: createId("goal"),
     userId,
     title: sourceGoal.title,
     summary: sourceGoal.summary,
     points: normalizePointValue(sourceGoal.points),
+    goalApproved: Boolean(sessionUser && isWardAdmin(sessionUser)),
+    goalApprovedBy: sessionUser && isWardAdmin(sessionUser) ? sessionUser.name : null,
+    goalApprovedAt: sessionUser && isWardAdmin(sessionUser) ? getTodayDateString() : null,
     deadline,
     leaderApproved: false,
     leaderApprovedBy: null,
@@ -638,9 +662,7 @@ async function approveGoalExtension(goalId, newDeadline) {
   }
 
   goal.deadline = newDeadline;
-  goal.leaderApproved = false;
-  goal.leaderApprovedBy = null;
-  goal.completedAt = null;
+  resetCompletionApproval(goal);
   await persistGoal(goal);
 }
 
@@ -677,10 +699,9 @@ async function updateGoalDetails(goalId, form) {
   goal.points = points;
   goal.deadline = deadline;
   goal.subGoals = subGoals;
+  approveGoalPlanFields(goal, getSessionUser(), points);
   if (getGoalProgress(goal) < 100) {
-    goal.leaderApproved = false;
-    goal.leaderApprovedBy = null;
-    goal.completedAt = null;
+    resetCompletionApproval(goal);
   }
   await persistGoal(goal);
 }
@@ -755,7 +776,7 @@ function getGoalProgress(goal) {
 }
 
 function getEarnedGoalPoints(goal) {
-  return goal.leaderApproved ? normalizePointValue(goal.points) : 0;
+  return goal.goalApproved && goal.leaderApproved ? normalizePointValue(goal.points) : 0;
 }
 
 function getYouthEarnedPoints(userId) {
@@ -824,16 +845,49 @@ function renderSessionProgressTracker(sessionUser) {
           `;
         }).join("")}
       </div>
-      <p class="subgoal-meta">Points are awarded when a Youth leader or bishop approves a completed goal.</p>
+      <p class="subgoal-meta">Points are awarded after a Youth leader or bishop approves both the goal plan and the completed goal.</p>
     </section>
   `;
+}
+
+function approveGoalPlanFields(goal, sessionUser, points = goal.points) {
+  goal.points = normalizePointValue(points);
+  goal.goalApproved = true;
+  goal.goalApprovedBy = sessionUser.name;
+  goal.goalApprovedAt = getTodayDateString();
+}
+
+function resetGoalPlanApproval(goal) {
+  goal.goalApproved = false;
+  goal.goalApprovedBy = null;
+  goal.goalApprovedAt = null;
+}
+
+function resetCompletionApproval(goal) {
+  goal.leaderApproved = false;
+  goal.leaderApprovedBy = null;
+  goal.completedAt = null;
+}
+
+function openGoalEditor(goalId) {
+  activeGoalEditorId = goalId;
+  render();
+}
+
+function closeGoalEditor() {
+  activeGoalEditorId = null;
+  render();
 }
 
 function getGoalStatus(goal) {
   const progress = getGoalProgress(goal);
 
+  if (!goal.goalApproved) {
+    return { label: "Pending goal approval", className: "pending" };
+  }
+
   if (goal.leaderApproved) {
-    return { label: "Approved", className: "approved" };
+    return { label: "Completed and approved", className: "approved" };
   }
 
   if (isGoalOverdue(goal)) {
@@ -841,7 +895,7 @@ function getGoalStatus(goal) {
   }
 
   if (progress === 100) {
-    return { label: "Pending Youth leader sign-off", className: "pending" };
+    return { label: "Pending completion approval", className: "pending" };
   }
 
   return { label: "In progress", className: "in-progress" };
@@ -1042,7 +1096,7 @@ async function logout() {
 
 async function toggleSubGoalUnit(goalId, subGoalId, unitIndex, completed) {
   const goal = state.goals.find((item) => item.id === goalId);
-  if (!goal || isGoalClosed(goal)) {
+  if (!goal || isGoalClosed(goal) || !goal.goalApproved) {
     return;
   }
 
@@ -1055,9 +1109,7 @@ async function toggleSubGoalUnit(goalId, subGoalId, unitIndex, completed) {
   subGoal.completedUnits[unitIndex] = completed ? getTodayDateString() : null;
 
   if (getGoalProgress(goal) < 100) {
-    goal.leaderApproved = false;
-    goal.leaderApprovedBy = null;
-    goal.completedAt = null;
+    resetCompletionApproval(goal);
   }
 
   await persistGoal(goal);
@@ -1080,9 +1132,24 @@ async function undoLatestSubGoalCompletion(goalId, subGoalId) {
   }
 
   subGoal.completedUnits[latestIndex] = null;
-  goal.leaderApproved = false;
-  goal.leaderApprovedBy = null;
-  goal.completedAt = null;
+  resetCompletionApproval(goal);
+  await persistGoal(goal);
+}
+
+async function approveGoalPlan(goalId, points) {
+  const sessionUser = getSessionUser();
+  const goal = state.goals.find((item) => item.id === goalId);
+
+  if (!sessionUser || !isWardAdmin(sessionUser) || !goal) {
+    return;
+  }
+
+  if (isGoalClosed(goal)) {
+    window.alert("This goal needs an approved extension before it can be approved.");
+    return;
+  }
+
+  approveGoalPlanFields(goal, sessionUser, points);
   await persistGoal(goal);
 }
 
@@ -1099,6 +1166,11 @@ async function approveGoal(goalId) {
     return;
   }
 
+  if (!goal.goalApproved) {
+    window.alert("Approve the goal plan and assign points before completing final approval.");
+    return;
+  }
+
   if (getGoalProgress(goal) !== 100) {
     window.alert("Every checklist item must be complete before a leader can approve the goal.");
     return;
@@ -1106,7 +1178,7 @@ async function approveGoal(goalId) {
 
   goal.leaderApproved = true;
   goal.leaderApprovedBy = sessionUser.name;
-  goal.completedAt = new Date().toISOString().slice(0, 10);
+  goal.completedAt = getTodayDateString();
   await persistGoal(goal);
 }
 
@@ -1144,6 +1216,9 @@ async function addGoal(event) {
     title,
     summary,
     points: 0,
+    goalApproved: false,
+    goalApprovedBy: null,
+    goalApprovedAt: null,
     deadline,
     leaderApproved: false,
     leaderApprovedBy: null,
@@ -1197,6 +1272,9 @@ async function createManagedGoal(event) {
     title,
     summary,
     points,
+    goalApproved: true,
+    goalApprovedBy: sessionUser.name,
+    goalApprovedAt: getTodayDateString(),
     deadline,
     leaderApproved: false,
     leaderApprovedBy: null,
@@ -1223,7 +1301,7 @@ async function addSubGoal(goalId, event) {
   const repeatCount = parseRepeatCount(form.elements.subGoalRepeatCount.value);
   const goal = state.goals.find((item) => item.id === goalId);
 
-  if (!goal || !value || isGoalClosed(goal)) {
+  if (!goal || !value || isGoalClosed(goal) || !goal.goalApproved) {
     return;
   }
 
@@ -1234,9 +1312,8 @@ async function addSubGoal(goalId, event) {
     completedUnits: Array.from({ length: repeatCount }, () => null)
   });
 
-  goal.leaderApproved = false;
-  goal.leaderApprovedBy = null;
-  goal.completedAt = null;
+  resetGoalPlanApproval(goal);
+  resetCompletionApproval(goal);
   await persistGoal(goal);
 }
 
@@ -1410,7 +1487,7 @@ function buildGoalCard(goal, mode) {
   pointsRow.className = "goal-points-row";
   pointsRow.innerHTML = `
     <span class="goal-points-badge">${normalizePointValue(goal.points)} pts</span>
-    <span class="subgoal-meta">${goal.leaderApproved ? "Awarded" : "Awards after approval"}</span>
+    <span class="subgoal-meta">${goal.leaderApproved ? "Awarded" : goal.goalApproved ? "Approved point value" : "Awaiting point approval"}</span>
   `;
   actions.appendChild(pointsRow);
 
@@ -1451,7 +1528,7 @@ function buildGoalCard(goal, mode) {
       checkbox.type = "checkbox";
       const completedDate = subGoal.completedUnits?.[unitIndex] || null;
       checkbox.checked = Boolean(completedDate);
-      checkbox.disabled = mode !== "youth" || goalClosed;
+      checkbox.disabled = mode !== "youth" || goalClosed || !goal.goalApproved;
       checkbox.title = completedDate ? `Completed on ${formatCompletedDate(completedDate)}` : "Not completed yet";
       checkbox.dataset.completedDate = completedDate || "";
 
@@ -1486,7 +1563,12 @@ function buildGoalCard(goal, mode) {
     subGoalList.appendChild(row);
   });
 
-  if (mode === "youth" && goalClosed) {
+  if (mode === "youth" && !goal.goalApproved) {
+    const note = document.createElement("p");
+    note.className = "leader-summary";
+    note.textContent = "This goal is waiting for a Youth leader or bishop to approve it and assign points before work begins.";
+    actions.appendChild(note);
+  } else if (mode === "youth" && goalClosed) {
     const note = document.createElement("p");
     note.className = "leader-summary";
     note.textContent = "This goal is closed because its deadline passed. A Youth leader or bishop must approve an extension before you can keep working on it.";
@@ -1494,11 +1576,11 @@ function buildGoalCard(goal, mode) {
   } else if (mode === "youth" && progress === 100 && !goal.leaderApproved) {
     const note = document.createElement("p");
     note.className = "leader-summary";
-    note.textContent = "This goal is complete and ready for Youth leader sign-off.";
+    note.textContent = "This goal is complete and ready for final Youth leader or bishop approval.";
     actions.appendChild(note);
   }
 
-  if (mode === "youth" && !goalClosed) {
+  if (mode === "youth" && !goalClosed && goal.goalApproved) {
     const subGoalForm = document.createElement("form");
     subGoalForm.className = "inline-form form-card";
     subGoalForm.innerHTML = `
@@ -1520,15 +1602,33 @@ function buildGoalCard(goal, mode) {
     const note = document.createElement("div");
     note.className = "leader-summary";
     note.textContent = goal.leaderApproved
-      ? `Approved by ${goal.leaderApprovedBy} on ${goal.completedAt}.`
+      ? `Goal plan approved by ${goal.goalApprovedBy || "a leader"}${goal.goalApprovedAt ? ` on ${goal.goalApprovedAt}` : ""}. Completed goal approved by ${goal.leaderApprovedBy} on ${goal.completedAt}.`
       : goalClosed
         ? "This goal is closed because its deadline passed. Approve a new deadline to extend it."
-      : progress === 100
-        ? "Ready for approval once reviewed."
-        : "Waiting for the youth to finish every checklist item.";
+        : !goal.goalApproved
+          ? "Review this goal, assign points, and approve it before the youth begins work."
+          : progress === 100
+            ? "Goal plan is approved. Review the completed work for final approval."
+            : `Goal plan approved by ${goal.goalApprovedBy || "a leader"}${goal.goalApprovedAt ? ` on ${goal.goalApprovedAt}` : ""}. Waiting for the youth to finish every checklist item.`;
     actions.appendChild(note);
 
-    if (goalClosed) {
+    if (!goal.goalApproved && !goalClosed) {
+      const approvalForm = document.createElement("form");
+      approvalForm.className = "inline-form form-card";
+      approvalForm.innerHTML = `
+        <h4>Approve Goal Plan</h4>
+        <label>
+          <span>Point value</span>
+          <input name="approvalPoints" type="number" min="0" step="1" value="${normalizePointValue(goal.points)}" required>
+        </label>
+        <button class="primary-button" type="submit">Approve Goal Plan</button>
+      `;
+      approvalForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        approveGoalPlan(goal.id, approvalForm.elements.approvalPoints.value);
+      });
+      actions.appendChild(approvalForm);
+    } else if (goalClosed) {
       const extensionForm = document.createElement("form");
       extensionForm.className = "inline-form form-card";
       extensionForm.innerHTML = `
@@ -1547,7 +1647,7 @@ function buildGoalCard(goal, mode) {
       const approveButton = document.createElement("button");
       approveButton.type = "button";
       approveButton.className = "secondary-button";
-      approveButton.textContent = "Approve Goal";
+      approveButton.textContent = "Approve Completed Goal";
       approveButton.disabled = progress !== 100;
       approveButton.addEventListener("click", () => approveGoal(goal.id));
       actions.appendChild(approveButton);
@@ -1555,57 +1655,12 @@ function buildGoalCard(goal, mode) {
   }
 
   if ((mode === "youth_leader" || mode === "bishop") && sessionUser) {
-    const managedYouthOptions = getManagedYouth(sessionUser)
-      .map((user) => `<option value="${user.id}">${user.name} (${getOrganizationLabel(user.organization)})</option>`)
-      .join("");
-
-    const adminTools = document.createElement("form");
-    adminTools.className = "inline-form form-card";
-    adminTools.innerHTML = `
-      <h4>Edit Goal</h4>
-      <label>
-        <span>Goal title</span>
-        <input name="editGoalTitle" type="text" value="${goal.title.replace(/"/g, "&quot;")}">
-      </label>
-      <label>
-        <span>Goal summary</span>
-        <textarea name="editGoalSummary">${goal.summary}</textarea>
-      </label>
-      <label>
-        <span>Deadline</span>
-        <input name="editGoalDeadline" type="date" value="${goal.deadline}" required>
-      </label>
-      <label>
-        <span>Point value</span>
-        <input name="editGoalPoints" type="number" min="0" step="1" value="${normalizePointValue(goal.points)}" required>
-      </label>
-      <div class="editable-subgoal-list">
-        ${buildEditableSubgoalRows(goal.subGoals)}
-      </div>
-      <div class="draft-builder-grid">
-        <label>
-          <span>Copy to youth</span>
-          <select name="copyGoalTarget">
-            <option value="">Choose youth</option>
-            ${managedYouthOptions}
-          </select>
-        </label>
-        <div class="template-action-wrap">
-          <button class="secondary-button" type="button" data-action="copy-goal">Copy Goal</button>
-        </div>
-      </div>
-      <div class="admin-action-row">
-        <button class="secondary-button" type="button" data-action="save-template">Make Template</button>
-        <button class="primary-button" type="submit">Save Goal Changes</button>
-      </div>
-    `;
-    adminTools.addEventListener("submit", (event) => {
-      event.preventDefault();
-      updateGoalDetails(goal.id, adminTools);
-    });
-    adminTools.querySelector("[data-action='save-template']").addEventListener("click", () => saveGoalAsTemplate(goal.id));
-    adminTools.querySelector("[data-action='copy-goal']").addEventListener("click", () => copyGoalToYouth(goal.id, adminTools.elements.copyGoalTarget.value));
-    actions.appendChild(adminTools);
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "ghost-button";
+    editButton.textContent = "Edit Goal";
+    editButton.addEventListener("click", () => openGoalEditor(goal.id));
+    actions.appendChild(editButton);
   }
 
   if (mode === "youth" && !isSupabaseRuntime) {
@@ -1618,6 +1673,96 @@ function buildGoalCard(goal, mode) {
   }
 
   return card;
+}
+
+function buildGoalEditorOverlay(sessionUser) {
+  if (!sessionUser || !isWardAdmin(sessionUser) || !activeGoalEditorId) {
+    return null;
+  }
+
+  const goal = state.goals.find((item) => item.id === activeGoalEditorId);
+  const owner = goal ? state.users.find((user) => user.id === goal.userId) : null;
+  if (!goal || !owner || !canManageYouth(sessionUser, owner)) {
+    activeGoalEditorId = null;
+    return null;
+  }
+
+  const managedYouthOptions = getManagedYouth(sessionUser)
+    .filter((user) => user.id !== goal.userId)
+    .map((user) => `<option value="${user.id}">${user.name} (${getOrganizationLabel(user.organization)})</option>`)
+    .join("");
+
+  const overlay = document.createElement("section");
+  overlay.className = "goal-editor-overlay";
+  overlay.innerHTML = `
+    <div class="goal-editor-screen" role="dialog" aria-modal="true" aria-label="Edit goal">
+      <div class="goal-editor-header">
+        <div>
+          <p class="eyebrow">Edit Goal</p>
+          <h2>${goal.title}</h2>
+          <p class="subgoal-meta">${owner.name} (${getOrganizationLabel(owner.organization)})</p>
+        </div>
+        <button class="ghost-button" type="button" data-action="close-editor">Close</button>
+      </div>
+      <form class="inline-form goal-editor-form">
+        <div class="goal-editor-grid">
+          <label>
+            <span>Goal title</span>
+            <input name="editGoalTitle" type="text" value="${goal.title.replace(/"/g, "&quot;")}" required>
+          </label>
+          <label>
+            <span>Point value</span>
+            <input name="editGoalPoints" type="number" min="0" step="1" value="${normalizePointValue(goal.points)}" required>
+          </label>
+          <label>
+            <span>Deadline</span>
+            <input name="editGoalDeadline" type="date" value="${goal.deadline}" required>
+          </label>
+        </div>
+        <label>
+          <span>Goal summary</span>
+          <textarea name="editGoalSummary">${goal.summary}</textarea>
+        </label>
+        <div class="editable-subgoal-list">
+          ${buildEditableSubgoalRows(goal.subGoals)}
+        </div>
+        <div class="goal-editor-grid">
+          <label>
+            <span>Copy to youth</span>
+            <select name="copyGoalTarget">
+              <option value="">Choose youth</option>
+              ${managedYouthOptions}
+            </select>
+          </label>
+          <div class="template-action-wrap">
+            <button class="secondary-button" type="button" data-action="copy-goal">Copy Goal</button>
+          </div>
+        </div>
+        <div class="admin-action-row">
+          <button class="secondary-button" type="button" data-action="save-template">Make Template</button>
+          <button class="primary-button" type="submit">Save Goal Changes</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  const form = overlay.querySelector(".goal-editor-form");
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await updateGoalDetails(goal.id, form);
+    activeGoalEditorId = null;
+    render();
+  });
+  overlay.querySelector("[data-action='close-editor']").addEventListener("click", closeGoalEditor);
+  overlay.querySelector("[data-action='save-template']").addEventListener("click", () => saveGoalAsTemplate(goal.id));
+  overlay.querySelector("[data-action='copy-goal']").addEventListener("click", () => copyGoalToYouth(goal.id, form.elements.copyGoalTarget.value));
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      closeGoalEditor();
+    }
+  });
+
+  return overlay;
 }
 
 function renderUserDashboard(sessionUser) {
@@ -1810,7 +1955,8 @@ function renderLeaderDashboard(sessionUser) {
     })
     .sort((a, b) => getGoalProgress(b) - getGoalProgress(a));
   const approvedCount = goals.filter((goal) => goal.leaderApproved).length;
-  const readyCount = goals.filter((goal) => getGoalProgress(goal) === 100 && !goal.leaderApproved).length;
+  const readyCount = goals.filter((goal) => goal.goalApproved && getGoalProgress(goal) === 100 && !goal.leaderApproved).length;
+  const pendingPlanCount = goals.filter((goal) => !goal.goalApproved).length;
   const managedYouth = getManagedYouth(sessionUser);
   const youthOptions = managedYouth.map((user) => `<option value="${user.id}">${user.name} (${getOrganizationLabel(user.organization)})</option>`).join("");
   const allowedOrganizations = getAllowedOrganizationsForManager(sessionUser);
@@ -1828,6 +1974,8 @@ function renderLeaderDashboard(sessionUser) {
     <strong>${approvedCount}</strong> goals approved
     <br>
     <strong>${readyCount}</strong> goals waiting for Youth leader sign-off
+    <br>
+    <strong>${pendingPlanCount}</strong> goals waiting for goal approval
   `;
   elements.leaderDashboard.appendChild(summary);
 
@@ -2027,6 +2175,7 @@ function renderBishopDashboard(sessionUser) {
 
 function render() {
   try {
+  document.querySelectorAll(".goal-editor-overlay").forEach((overlay) => overlay.remove());
   if (!bootstrappedState) {
     elements.dashboardTitle.textContent = "Loading goal tracker";
     elements.emptyState.classList.remove("hidden");
@@ -2077,6 +2226,11 @@ function render() {
   } else {
     elements.userDashboard.classList.remove("hidden");
     renderUserDashboard(sessionUser);
+  }
+
+  const editorOverlay = buildGoalEditorOverlay(sessionUser);
+  if (editorOverlay) {
+    document.body.appendChild(editorOverlay);
   }
   } catch (error) {
     console.warn("Render failed.", error);

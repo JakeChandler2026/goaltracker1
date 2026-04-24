@@ -29,7 +29,13 @@
       const snapshotGoal = snapshotGoalsById.get(goal.id);
       return {
         ...goal,
-        points: normalizePointValue(snapshotGoal?.points ?? goal.points)
+        points: normalizePointValue(snapshotGoal?.points ?? goal.points),
+        goalApproved: Boolean(snapshotGoal?.goalApproved ?? goal.goalApproved),
+        goalApprovedBy: snapshotGoal?.goalApprovedBy ?? goal.goalApprovedBy ?? null,
+        goalApprovedAt: snapshotGoal?.goalApprovedAt ?? goal.goalApprovedAt ?? null,
+        leaderApproved: Boolean(snapshotGoal?.leaderApproved ?? goal.leaderApproved),
+        leaderApprovedBy: snapshotGoal?.leaderApprovedBy ?? goal.leaderApprovedBy ?? null,
+        completedAt: snapshotGoal?.completedAt ?? goal.completedAt ?? null
       };
     });
 
@@ -50,7 +56,13 @@
     if (goalIndex >= 0) {
       nextState.goals[goalIndex] = {
         ...nextState.goals[goalIndex],
-        points: normalizePointValue(goal.points)
+        points: normalizePointValue(goal.points),
+        goalApproved: Boolean(goal.goalApproved),
+        goalApprovedBy: goal.goalApprovedBy || null,
+        goalApprovedAt: goal.goalApprovedAt || null,
+        leaderApproved: Boolean(goal.leaderApproved),
+        leaderApprovedBy: goal.leaderApprovedBy || null,
+        completedAt: goal.completedAt || null
       };
     } else if (options.insert) {
       nextState.goals.unshift({
@@ -460,6 +472,9 @@
             title: goal.title,
             summary: goal.summary,
             points: normalizePointValue(goal.points),
+            goalApproved: Boolean(goal.goal_approved),
+            goalApprovedBy: goal.goal_approved_by ? (profileNamesById.get(goal.goal_approved_by) || null) : null,
+            goalApprovedAt: goal.goal_approved_at ? String(goal.goal_approved_at).slice(0, 10) : null,
             deadline: goal.deadline,
             leaderApproved: Boolean(goal.leader_approved),
             leaderApprovedBy: goal.leader_approved_by ? (profileNamesById.get(goal.leader_approved_by) || null) : null,
@@ -488,6 +503,7 @@
     async createGoal(storageKey, appState, payload) {
       try {
         const client = createSupabaseClient();
+        const goalApproverId = await findProfileIdByName(client, payload.goal.goalApprovedBy);
         const goalResult = await client.from("goals").insert({
           id: payload.goal.id,
           youth_id: payload.goal.userId,
@@ -497,6 +513,9 @@
           title: payload.goal.title,
           summary: payload.goal.summary,
           points: normalizePointValue(payload.goal.points),
+          goal_approved: Boolean(payload.goal.goalApproved),
+          goal_approved_by: goalApproverId,
+          goal_approved_at: payload.goal.goalApprovedAt ? `${payload.goal.goalApprovedAt}T00:00:00.000Z` : null,
           deadline: payload.goal.deadline,
           leader_approved: Boolean(payload.goal.leaderApproved),
           completed_at: payload.goal.completedAt ? `${payload.goal.completedAt}T00:00:00.000Z` : null
@@ -517,11 +536,15 @@
     async updateGoal(storageKey, appState, payload) {
       try {
         const client = createSupabaseClient();
+        const goalApproverId = await findProfileIdByName(client, payload.goal.goalApprovedBy);
         const approverId = await findProfileIdByName(client, payload.goal.leaderApprovedBy);
         const goalResult = await client.from("goals").update({
           title: payload.goal.title,
           summary: payload.goal.summary,
           points: normalizePointValue(payload.goal.points),
+          goal_approved: Boolean(payload.goal.goalApproved),
+          goal_approved_by: goalApproverId,
+          goal_approved_at: payload.goal.goalApprovedAt ? `${payload.goal.goalApprovedAt}T00:00:00.000Z` : null,
           deadline: payload.goal.deadline,
           leader_approved: Boolean(payload.goal.leaderApproved),
           leader_approved_by: approverId,

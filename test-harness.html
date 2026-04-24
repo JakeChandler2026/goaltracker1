@@ -58,6 +58,12 @@
       element.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     }
 
+    async function openGoalEditor(doc, card) {
+      click(Array.from(card.querySelectorAll("button")).find((button) => button.textContent.includes("Edit Goal")));
+      await waitFor(() => Boolean(doc.querySelector(".goal-editor-overlay")));
+      return doc.querySelector(".goal-editor-overlay");
+    }
+
     function addDays(dateString, days) {
       const date = new Date(`${dateString}T00:00:00`);
       date.setDate(date.getDate() + days);
@@ -109,6 +115,9 @@
           return title.includes("Choose a login") || title.includes("Something went wrong");
         });
         assert(reloadedDoc.getElementById("dashboardTitle").textContent.includes("Choose a login"), "Logged-out dashboard state renders");
+        assert(reloadedDoc.querySelector(".hero h1").textContent.includes("Pathway to Christ"), "Header uses the Pathway to Christ name");
+        assert(!reloadedDoc.body.textContent.includes("Included in this build"), "Build-included UI copy is removed");
+        assert(reloadedDoc.querySelector(".hero-image-card img")?.naturalWidth > 0, "Christ image renders in the header");
 
         reloadedDoc.getElementById("username").value = "josh@example.com";
         reloadedDoc.getElementById("password").value = "goal123";
@@ -125,7 +134,16 @@
         const progressTracker = reloadedDoc.getElementById("sessionProgressTracker");
         assert(!progressTracker.classList.contains("hidden"), "Youth sidebar shows the progress tracker");
         assert(progressTracker.textContent.includes("Overall Progress"), "Progress tracker renders in the left sidebar");
+        assert(progressTracker.querySelectorAll(".sidebar-progress-level").length === 3, "Youth progress tracker renders three award levels");
+        assert(progressTracker.textContent.includes("Iron Rod Award"), "Young Men level 1 award renders");
+        assert(progressTracker.textContent.includes("Stripling Warrior Award"), "Young Men level 2 award renders");
+        assert(progressTracker.textContent.includes("Helaman Leadership Award"), "Young Men level 3 award renders");
+        assert(progressTracker.textContent.includes("0 pts"), "Youth starts with zero approved points");
         assert(reloadedDoc.querySelectorAll(".goal-card").length >= 2, "User dashboard renders goals");
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".goal-points-badge")).some((badge) => badge.textContent.includes("40")),
+          "Existing goal point values render on goal cards"
+        );
 
         click(Array.from(reloadedDoc.querySelectorAll("[data-youth-view]")).find((button) =>
           button.textContent.includes("Create Goal")
@@ -147,7 +165,48 @@
         const goalTitles = Array.from(reloadedDoc.querySelectorAll(".goal-title")).map((node) => node.textContent);
         assert(goalTitles.includes("Scripture Study Goal"), "New goal creation works");
 
-        const newestGoalCard = Array.from(reloadedDoc.querySelectorAll(".goal-card")).find((card) =>
+        let newestGoalCard = Array.from(reloadedDoc.querySelectorAll(".goal-card")).find((card) =>
+          card.querySelector(".goal-title").textContent === "Scripture Study Goal"
+        );
+        assert(newestGoalCard.querySelector(".goal-status").textContent.includes("Pending goal approval"), "Youth-created goals wait for goal-plan approval");
+        assert(
+          Array.from(newestGoalCard.querySelectorAll(".checklist-track input[type='checkbox']")).every((checkbox) => checkbox.disabled),
+          "Youth cannot work a goal before point approval"
+        );
+
+        click(reloadedDoc.getElementById("logoutButton"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        click(reloadedDoc.getElementById("leaderTab"));
+        reloadedDoc.getElementById("username").value = "leader.one@example.com";
+        reloadedDoc.getElementById("password").value = "approve789";
+        submit(reloadedDoc.getElementById("loginForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        let leaderPlanCard = Array.from(reloadedDoc.querySelectorAll(".goal-card")).find((card) =>
+          card.querySelector(".goal-title").textContent === "Scripture Study Goal"
+        );
+        assert(Boolean(leaderPlanCard), "Leader can see the newly created goal awaiting plan approval");
+        leaderPlanCard.querySelector("input[name='approvalPoints']").value = "80";
+        submit(leaderPlanCard.querySelector("form"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        leaderPlanCard = Array.from(reloadedDoc.querySelectorAll(".goal-card")).find((card) =>
+          card.querySelector(".goal-title").textContent === "Scripture Study Goal"
+        );
+        assert(leaderPlanCard.querySelector(".goal-status").textContent.includes("In progress"), "Goal-plan approval opens the goal for work");
+        assert(leaderPlanCard.querySelector(".goal-points-badge").textContent.includes("80"), "Goal-plan approval assigns the point value");
+
+        click(reloadedDoc.getElementById("logoutButton"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        click(reloadedDoc.getElementById("userTab"));
+        reloadedDoc.getElementById("username").value = "josh@example.com";
+        reloadedDoc.getElementById("password").value = "goal123";
+        submit(reloadedDoc.getElementById("loginForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        newestGoalCard = Array.from(reloadedDoc.querySelectorAll(".goal-card")).find((card) =>
           card.querySelector(".goal-title").textContent === "Scripture Study Goal"
         );
         const checkboxes = newestGoalCard.querySelectorAll(".checklist-track input[type='checkbox']");
@@ -181,7 +240,7 @@
           card.querySelector(".goal-title").textContent === "Scripture Study Goal"
         );
         assert(readyCard.querySelector(".progress-value").textContent === "100%", "Overall goal progress reaches 100%");
-        assert(readyCard.querySelector(".goal-status").textContent.includes("Pending Youth leader sign-off"), "Completed goal waits for leader approval");
+        assert(readyCard.querySelector(".goal-status").textContent.includes("Pending completion approval"), "Completed goal waits for final approval");
 
         click(reloadedDoc.getElementById("logoutButton"));
         await new Promise((resolve) => setTimeout(resolve, 150));
@@ -204,11 +263,11 @@
           "Leaders can see the completion date for checked checklist items"
         );
         const approveButton = Array.from(leaderGoalCard.querySelectorAll("button")).find((button) =>
-          button.textContent.includes("Approve Goal")
+          button.textContent.includes("Approve Completed Goal")
         );
         assert(
           Boolean(approveButton) && !approveButton.disabled,
-          `Leader can approve completed goal (progress=${leaderGoalCard.querySelector(".progress-value")?.textContent || "missing"}, status=${leaderGoalCard.querySelector(".goal-status")?.textContent || "missing"}, buttons=${leaderGoalCard.querySelectorAll("button").length})`
+          `Leader can approve completed goal after approving the goal plan (progress=${leaderGoalCard.querySelector(".progress-value")?.textContent || "missing"}, status=${leaderGoalCard.querySelector(".goal-status")?.textContent || "missing"}, buttons=${leaderGoalCard.querySelectorAll("button").length})`
         );
         click(approveButton);
         await new Promise((resolve) => setTimeout(resolve, 250));
@@ -217,7 +276,7 @@
           card.querySelector(".goal-title").textContent === "Scripture Study Goal"
         );
         assert(
-          approvedCard.querySelector(".goal-status").textContent.includes("Approved"),
+          approvedCard.querySelector(".goal-status").textContent.includes("Completed and approved"),
           `Leader approval updates goal status (status=${approvedCard.querySelector(".goal-status")?.textContent || "missing"})`
         );
         const undoLatestCheckButton = Array.from(approvedCard.querySelectorAll("button")).find((button) =>
@@ -238,8 +297,9 @@
         const today = new Date().toISOString().slice(0, 10);
         const yesterday = addDays(today, -1);
         const extensionDate = addDays(today, 10);
-        reopenedCard.querySelector("input[name='editGoalDeadline']").value = yesterday;
-        submit(reopenedCard.querySelector("form"));
+        let editorOverlay = await openGoalEditor(reloadedDoc, reopenedCard);
+        editorOverlay.querySelector("input[name='editGoalDeadline']").value = yesterday;
+        submit(editorOverlay.querySelector("form"));
         await new Promise((resolve) => setTimeout(resolve, 250));
 
         const overdueLeaderCard = Array.from(reloadedDoc.querySelectorAll(".goal-card")).find((card) =>
@@ -319,10 +379,11 @@
         assert(Boolean(adminGoalCard), "Leader can create a goal directly for youth");
         assert(adminGoalCard.querySelector(".goal-points-badge").textContent.includes("75"), "Leader-assigned points show on the goal");
 
-        adminGoalCard.querySelector("input[name='editGoalTitle']").value = "Leader Assigned Goal Updated";
-        adminGoalCard.querySelector("textarea[name='editGoalSummary']").value = "Updated by a Youth leader.";
-        adminGoalCard.querySelector("input[name='editGoalPoints']").value = "120";
-        submit(adminGoalCard.querySelector("form"));
+        editorOverlay = await openGoalEditor(reloadedDoc, adminGoalCard);
+        editorOverlay.querySelector("input[name='editGoalTitle']").value = "Leader Assigned Goal Updated";
+        editorOverlay.querySelector("textarea[name='editGoalSummary']").value = "Updated by a Youth leader.";
+        editorOverlay.querySelector("input[name='editGoalPoints']").value = "120";
+        submit(editorOverlay.querySelector("form"));
         await new Promise((resolve) => setTimeout(resolve, 250));
 
         adminGoalCard = Array.from(reloadedDoc.querySelectorAll(".goal-card")).find((card) =>
@@ -330,7 +391,8 @@
         );
         assert(Boolean(adminGoalCard), "Leader can edit an existing youth goal");
         assert(adminGoalCard.querySelector(".goal-points-badge").textContent.includes("120"), "Leader can update a goal's point value");
-        click(Array.from(adminGoalCard.querySelectorAll("button")).find((button) => button.textContent.includes("Make Template")));
+        editorOverlay = await openGoalEditor(reloadedDoc, adminGoalCard);
+        click(Array.from(editorOverlay.querySelectorAll("button")).find((button) => button.textContent.includes("Make Template")));
         await new Promise((resolve) => setTimeout(resolve, 250));
 
         let createdTemplateCard = Array.from(reloadedDoc.querySelectorAll(".template-grid .form-card")).find((card) =>
@@ -358,10 +420,11 @@
         adminGoalCard = Array.from(reloadedDoc.querySelectorAll(".goal-card")).find((card) =>
           card.querySelector(".goal-title").textContent === "Leader Assigned Goal Updated"
         );
-        const copyTargetSelect = adminGoalCard.querySelector("select[name='copyGoalTarget']");
+        editorOverlay = await openGoalEditor(reloadedDoc, adminGoalCard);
+        const copyTargetSelect = editorOverlay.querySelector("select[name='copyGoalTarget']");
         copyTargetSelect.value = Array.from(copyTargetSelect.options).find((option) => option.textContent.includes("Caleb Young")).value;
         change(copyTargetSelect);
-        click(Array.from(adminGoalCard.querySelectorAll("button")).find((button) => button.textContent.includes("Copy Goal")));
+        click(Array.from(editorOverlay.querySelectorAll("button")).find((button) => button.textContent.includes("Copy Goal")));
         await new Promise((resolve) => setTimeout(resolve, 250));
 
         const templateCards = reloadedDoc.querySelectorAll(".template-grid .form-card");
