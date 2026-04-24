@@ -62,6 +62,18 @@ const storageAdapter = window.BishopGoalTrackerStorage || {
 const isSupabaseRuntime = backendRuntime.runtimeMode === "supabase";
 const BOOTSTRAP_TIMEOUT_MS = 8000;
 const LEVEL_POINT_REQUIREMENTS = [100, 100, 100];
+const AWARD_NAMES_BY_ORGANIZATION = {
+  young_men: [
+    "Iron Rod Award",
+    "Stripling Warrior Award",
+    "Helaman Leadership Award"
+  ],
+  young_women: [
+    "Builders of Faith Award",
+    "Messengers of Hope Award",
+    "Gatherers of Light Award"
+  ]
+};
 
 const firstRunState = {
   users: [
@@ -764,6 +776,10 @@ function getLevelPointMilestones() {
   });
 }
 
+function getAwardNamesForYouth(sessionUser) {
+  return AWARD_NAMES_BY_ORGANIZATION[sessionUser?.organization] || AWARD_NAMES_BY_ORGANIZATION.young_men;
+}
+
 function renderSessionProgressTracker(sessionUser) {
   if (!elements.sessionProgressTracker) {
     return;
@@ -777,6 +793,7 @@ function renderSessionProgressTracker(sessionUser) {
 
   const earnedPoints = getYouthEarnedPoints(sessionUser.id);
   const milestones = getLevelPointMilestones();
+  const awardNames = getAwardNamesForYouth(sessionUser);
   const currentLevel = milestones.find((level) => earnedPoints < level.threshold) || milestones[milestones.length - 1];
 
   elements.sessionProgressTracker.classList.remove("hidden");
@@ -786,7 +803,7 @@ function renderSessionProgressTracker(sessionUser) {
         <p class="eyebrow">Overall Progress</p>
         <div class="sidebar-progress-total">
           <strong>${earnedPoints} pts</strong>
-          <span class="subgoal-meta">Current target: Level ${currentLevel.index}</span>
+          <span class="subgoal-meta">Current target: ${awardNames[currentLevel.index - 1]}</span>
         </div>
       </div>
       <div class="sidebar-progress-levels">
@@ -797,7 +814,7 @@ function renderSessionProgressTracker(sessionUser) {
           return `
             <div class="sidebar-progress-level${complete ? " is-complete" : ""}">
               <div class="sidebar-progress-level-head">
-                <strong>Level ${level.index}</strong>
+                <strong>${awardNames[level.index - 1]}</strong>
                 <span class="subgoal-meta">${Math.min(pointsIntoLevel, level.points)}/${level.points} pts</span>
               </div>
               <div class="sidebar-progress-bar">
