@@ -1,0 +1,164 @@
+{
+  "users": [
+    {
+      "id": "u1",
+      "role": "youth",
+      "email": "josh@example.com",
+      "password": "goal123",
+      "name": "Josh Carter",
+      "ward": "Mapleton 1st Ward",
+      "organization": "young_men"
+    },
+    {
+      "id": "u2",
+      "role": "youth",
+      "email": "maria@example.com",
+      "password": "growth456",
+      "name": "Maria Lopez",
+      "ward": "Mapleton 1st Ward",
+      "organization": "young_women"
+    },
+    {
+      "id": "l1",
+      "role": "youth_leader",
+      "email": "leader.one@example.com",
+      "password": "approve789",
+      "name": "Brother Jensen",
+      "ward": "Mapleton 1st Ward",
+      "organization": "young_men",
+      "approvalStatus": "approved"
+    },
+    {
+      "id": "l2",
+      "role": "youth_leader",
+      "email": "leader.two@example.com",
+      "password": "hearts456",
+      "name": "Sister Lopez",
+      "ward": "Mapleton 1st Ward",
+      "organization": "young_women",
+      "approvalStatus": "approved"
+    },
+    {
+      "id": "b1",
+      "role": "bishop",
+      "email": "ward.bishop@example.com",
+      "password": "steward123",
+      "name": "Bishop Reynolds",
+      "ward": "Mapleton 1st Ward",
+      "organization": "all",
+      "approvalStatus": "verified"
+    }
+  ],
+  "goals": [
+    {
+      "id": "g1",
+      "userId": "u1",
+      "title": "Complete Service Project Plan",
+      "summary": "Organize and finish a monthly quorum service project with full participation.",
+      "deadline": "2026-12-31",
+      "leaderApproved": false,
+      "leaderApprovedBy": null,
+      "completedAt": null,
+      "subGoals": [
+        {
+          "id": "sg1",
+          "title": "Choose project location",
+          "repeatCount": 1,
+          "completedCount": 1
+        },
+        {
+          "id": "sg2",
+          "title": "Build volunteer sign-up list",
+          "repeatCount": 1,
+          "completedCount": 1
+        },
+        {
+          "id": "sg3",
+          "title": "Finish project day",
+          "repeatCount": 1,
+          "completedCount": 0
+        }
+      ]
+    },
+    {
+      "id": "g2",
+      "userId": "u1",
+      "title": "Prepare Teaching Assignment",
+      "summary": "Study, prepare, and deliver the next quorum lesson.",
+      "deadline": "2026-12-31",
+      "leaderApproved": false,
+      "leaderApprovedBy": null,
+      "completedAt": null,
+      "subGoals": [
+        {
+          "id": "sg4",
+          "title": "Read source materials",
+          "repeatCount": 1,
+          "completedCount": 1
+        },
+        {
+          "id": "sg5",
+          "title": "Write outline",
+          "repeatCount": 1,
+          "completedCount": 1
+        },
+        {
+          "id": "sg6",
+          "title": "Deliver lesson",
+          "repeatCount": 1,
+          "completedCount": 1
+        }
+      ]
+    },
+    {
+      "id": "g3",
+      "userId": "u2",
+      "title": "Temple Family History Goal",
+      "summary": "Research family names and prepare one family line for temple submission.",
+      "deadline": "2026-12-31",
+      "leaderApproved": true,
+      "leaderApprovedBy": "Bishop Reynolds",
+      "completedAt": "2026-04-01",
+      "subGoals": [
+        {
+          "id": "sg7",
+          "title": "Collect family records",
+          "repeatCount": 1,
+          "completedCount": 1
+        },
+        {
+          "id": "sg8",
+          "title": "Verify dates and places",
+          "repeatCount": 1,
+          "completedCount": 1
+        },
+        {
+          "id": "sg9",
+          "title": "Submit final names",
+          "repeatCount": 1,
+          "completedCount": 1
+        }
+      ]
+    }
+  ],
+  "templates": [
+    {
+      "id": "t1",
+      "title": "Daily Scripture Habit",
+      "summary": "Build a steady scripture study routine over three months.",
+      "subGoals": [
+        {
+          "id": "tsg1",
+          "title": "Read 20 minutes a day",
+          "repeatCount": 90
+        },
+        {
+          "id": "tsg2",
+          "title": "Write one takeaway each week",
+          "repeatCount": 12
+        }
+      ]
+    }
+  ],
+  "session": null
+}

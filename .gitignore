@@ -1,0 +1,16 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+
+# Local Supabase CLI state
+supabase/.temp/
+backend/supabase/.temp/
+
+# Local hosting runtime files
+hosting/site-server.pid
+hosting/site-server.log
+hosting/site-server.err.log
+
+# Local verification artifacts
+chrome-test-output.html
+chrome-test-output-debug.html

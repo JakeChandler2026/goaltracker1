@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bishop Goal Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Goal Tracking Portal</p>
+        <h1>Track progress, split work into sub-goals, and sign off completions.</h1>
+        <div class="runtime-banner" id="runtimeBanner"></div>
+        <p class="hero-copy">
+          Youth can log in, update sub-goal progress, repeat a checklist item for as many days as needed,
+          and watch each goal move toward completion.
+          Youth leaders work within Young Men or Young Women, while bishops can oversee both and manage goals across the whole ward.
+        </p>
+      </div>
+      <div class="hero-card">
+        <h2>Included in this build</h2>
+        <ul>
+          <li>Youth login</li>
+          <li>Youth leader login</li>
+          <li>Bishop login</li>
+          <li>Young Men and Young Women access rules</li>
+          <li>Goal and sub-goal tracking</li>
+          <li>Repeated checklist counts</li>
+          <li>Automatic percentage bars</li>
+          <li>Goal templates, copying, and editing</li>
+          <li>Youth leader approval workflow</li>
+        </ul>
+      </div>
+    </header>
+
+    <main class="app-grid">
+      <section class="panel auth-panel" id="authPanel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Access</p>
+            <h2>Sign in</h2>
+          </div>
+          <button class="ghost-button hidden" id="logoutButton" type="button">Log out</button>
+        </div>
+
+        <div id="loginView">
+          <div class="tab-row" role="tablist" aria-label="Login type">
+            <button class="tab-button active" id="userTab" type="button">Youth Login</button>
+            <button class="tab-button" id="leaderTab" type="button">Youth Leader Login</button>
+            <button class="tab-button" id="bishopTab" type="button">Bishop Login</button>
+          </div>
+
+          <div class="subtab-row" id="userAuthModes">
+            <button class="tab-button active" id="signInModeButton" type="button">Sign In</button>
+            <button class="tab-button" id="createAccountModeButton" type="button">Create Account</button>
+          </div>
+
+          <form id="loginForm" class="stack">
+            <label>
+              <span id="identityLabel">Email</span>
+              <input id="username" name="username" type="email" placeholder="Enter email" required>
+            </label>
+            <label>
+              <span>Password</span>
+              <input id="password" name="password" type="password" placeholder="Enter password" required>
+            </label>
+            <button class="primary-button" type="submit">Sign in</button>
+          </form>
+
+          <form id="registerForm" class="stack hidden">
+            <label>
+              <span>Full name</span>
+              <input id="registerName" name="registerName" type="text" placeholder="Enter your full name" required>
+            </label>
+            <label>
+              <span>Email</span>
+              <input id="registerEmail" name="registerEmail" type="email" placeholder="Enter your email" required>
+            </label>
+            <label>
+              <span>Ward</span>
+              <input id="registerWard" name="registerWard" type="text" placeholder="Enter your ward name" required>
+            </label>
+            <label id="registerOrganizationField">
+              <span>Organization</span>
+              <select id="registerOrganization" name="registerOrganization">
+                <option value="young_men">Young Men</option>
+                <option value="young_women">Young Women</option>
+              </select>
+            </label>
+            <label>
+              <span>Password</span>
+              <input id="registerPassword" name="registerPassword" type="password" placeholder="Create a password" required>
+            </label>
+            <button class="primary-button" type="submit">Create account</button>
+          </form>
+
+          <div class="demo-box" id="demoAccountsBox">
+            <h3>Demo accounts</h3>
+            <p><strong>Youth:</strong> <code>josh@example.com</code> / <code>goal123</code></p>
+            <p><strong>Youth:</strong> <code>maria@example.com</code> / <code>growth456</code></p>
+            <p><strong>Youth leader:</strong> <code>leader.one@example.com</code> / <code>approve789</code> (Young Men)</p>
+            <p><strong>Youth leader:</strong> <code>leader.two@example.com</code> / <code>hearts456</code> (Young Women)</p>
+            <p><strong>Bishop:</strong> <code>ward.bishop@example.com</code> / <code>steward123</code></p>
+          </div>
+        </div>
+
+        <div id="sessionView" class="hidden">
+          <div class="session-badge" id="sessionBadge"></div>
+          <h3 id="sessionTitle"></h3>
+          <p id="sessionDescription"></p>
+        </div>
+      </section>
+
+      <section class="panel dashboard-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Dashboard</p>
+            <h2 id="dashboardTitle">Choose a login to get started</h2>
+          </div>
+        </div>
+
+        <div id="emptyState" class="empty-state">
+          <h3>Everything is ready</h3>
+          <p>Sign in or create a youth, Youth leader, or bishop account to manage ward-based goals and approvals.</p>
+        </div>
+
+        <div id="userDashboard" class="hidden"></div>
+        <div id="leaderDashboard" class="hidden"></div>
+      </section>
+    </main>
+  </div>
+
+  <template id="goalCardTemplate">
+    <article class="goal-card">
+      <div class="goal-head">
+        <div>
+          <p class="goal-owner"></p>
+          <h3 class="goal-title"></h3>
+        </div>
+        <span class="goal-status"></span>
+      </div>
+      <p class="goal-summary"></p>
+      <div class="progress-block">
+        <div class="progress-meta">
+          <span>Overall progress</span>
+          <strong class="progress-value"></strong>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+      </div>
+      <div class="subgoal-list"></div>
+      <div class="goal-actions"></div>
+    </article>
+  </template>
+
+  <script>
+    window.BishopGoalTrackerConfig = {
+      runtimeMode: "demo-local",
+      projectName: "Bishop Goal Tracker",
+      supabase: {
+        url: "",
+        anonKey: "",
+        projectLabel: "demo",
+        storageKey: "bishop-goal-tracker-state-v1",
+        snapshotTable: "app_runtime_snapshots",
+        snapshotScope: "default",
+        adminUserManagementFunction: "admin-user-management"
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-browser-adapter.js"></script>
+  <script src="backend-client.js"></script>
+  <script src="auth-client.js"></script>
+  <script src="storage-adapter.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
