@@ -3282,6 +3282,12 @@ function buildManagedYouthOverview(sessionUser, managedYouth) {
       : youth.loginStatus === "invitation_ready"
         ? "Email ready"
         : "Login ready";
+    const quickActions = [
+      !parentLinks.length ? `<button class="secondary-button compact-card-button" type="button" data-link-parent-id="${youth.id}">Link Parent</button>` : "",
+      youth.loginStatus !== "verified"
+        ? `<button class="secondary-button compact-card-button" type="button" data-add-email-id="${youth.id}">${youth.email ? "Manage Email" : "Add Email"}</button>`
+        : ""
+    ].filter(Boolean).join("");
     const card = document.createElement("article");
     card.className = "managed-youth-card";
     card.innerHTML = `
@@ -3293,7 +3299,10 @@ function buildManagedYouthOverview(sessionUser, managedYouth) {
         </div>
         <div class="session-badge">${youthGoals.length} goals</div>
       </div>
-      <button class="secondary-button compact-card-button" type="button" data-edit-youth-id="${youth.id}">Edit Youth Account</button>
+      <div class="managed-youth-card-actions">
+        ${quickActions}
+        <button class="secondary-button compact-card-button" type="button" data-edit-youth-id="${youth.id}">Edit Youth Account</button>
+      </div>
       <div class="youth-goal-progress-list">
         ${youthGoals.length ? youthGoals.map((goal, index) => {
           const progress = getGoalProgress(goal);
@@ -3314,6 +3323,8 @@ function buildManagedYouthOverview(sessionUser, managedYouth) {
       </div>
     `;
     card.querySelector("[data-edit-youth-id]").addEventListener("click", () => openYouthAccountEditor(youth.id));
+    card.querySelector("[data-link-parent-id]")?.addEventListener("click", () => openYouthAccountEditor(youth.id));
+    card.querySelector("[data-add-email-id]")?.addEventListener("click", () => openYouthAccountEditor(youth.id));
     grid.appendChild(card);
   });
 

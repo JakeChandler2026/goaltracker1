@@ -404,6 +404,11 @@ button:hover {
   padding: 8px 10px;
 }
 
+.managed-youth-card-actions {
+  display: grid;
+  gap: 8px;
+}
+
 .parent-link-panel {
   display: grid;
   gap: 12px;

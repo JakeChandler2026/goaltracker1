@@ -617,6 +617,11 @@
         const calebCard = Array.from(reloadedDoc.querySelectorAll(".managed-youth-card")).find((card) =>
           card.textContent.includes("Caleb Young")
         );
+        assert(
+          Array.from(calebCard.querySelectorAll("button")).some((button) => button.textContent.includes("Link Parent")) &&
+          Array.from(calebCard.querySelectorAll("button")).some((button) => button.textContent.includes("Add Email")),
+          "Youth card shows quick actions to link parents and add email"
+        );
         click(Array.from(calebCard.querySelectorAll("button")).find((button) => button.textContent.includes("Edit Youth Account")));
         await new Promise((resolve) => setTimeout(resolve, 150));
         const editYouthForm = reloadedDoc.getElementById("editYouthAccountForm");
@@ -633,6 +638,10 @@
         );
         const updatedCalebCard = Array.from(reloadedDoc.querySelectorAll(".managed-youth-card")).find((card) =>
           card.textContent.includes("Caleb Young Updated")
+        );
+        assert(
+          Array.from(updatedCalebCard.querySelectorAll("button")).some((button) => button.textContent.includes("Manage Email")),
+          "Youth card shows a manage email action when an email is ready"
         );
         click(Array.from(updatedCalebCard.querySelectorAll("button")).find((button) => button.textContent.includes("Edit Youth Account")));
         await new Promise((resolve) => setTimeout(resolve, 150));
