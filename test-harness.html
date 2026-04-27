@@ -58,10 +58,25 @@
       element.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     }
 
+    function dragBefore(win, source, target) {
+      const dataTransfer = new win.DataTransfer();
+      source.dispatchEvent(new win.DragEvent("dragstart", { bubbles: true, dataTransfer }));
+      target.dispatchEvent(new win.DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer, clientY: target.getBoundingClientRect().top }));
+      target.dispatchEvent(new win.DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer }));
+      source.dispatchEvent(new win.DragEvent("dragend", { bubbles: true, dataTransfer }));
+    }
+
     async function openGoalEditor(doc, card) {
       click(Array.from(card.querySelectorAll("button")).find((button) => button.textContent.includes("Edit Goal")));
       await waitFor(() => Boolean(doc.querySelector(".goal-editor-overlay")));
       return doc.querySelector(".goal-editor-overlay");
+    }
+
+    async function openAdminView(doc, label) {
+      const button = Array.from(doc.querySelectorAll("[data-admin-view]")).find((item) => item.textContent.includes(label));
+      assert(Boolean(button), `Admin navigation includes ${label}`);
+      click(button);
+      await new Promise((resolve) => setTimeout(resolve, 150));
     }
 
     function addDays(dateString, days) {
@@ -119,6 +134,82 @@
         assert(!reloadedDoc.body.textContent.includes("Included in this build"), "Build-included UI copy is removed");
         assert(reloadedDoc.querySelector(".hero-image-card img")?.naturalWidth > 0, "Christ image renders in the header");
 
+        click(reloadedDoc.getElementById("adminTab"));
+        assert(reloadedDoc.getElementById("userAuthModes").classList.contains("hidden"), "Admin login does not expose self-signup controls");
+        reloadedDoc.getElementById("username").value = "admin@example.com";
+        reloadedDoc.getElementById("password").value = "admin123";
+        submit(reloadedDoc.getElementById("loginForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        assert(reloadedDoc.getElementById("sessionTitle").textContent.includes("Stake Administrator"), "Administrator login succeeds");
+        assert(reloadedDoc.getElementById("dashboardTitle").textContent.includes("administrator overview"), "Administrator lands on overview mode");
+        const adminWardCards = Array.from(reloadedDoc.querySelectorAll(".admin-ward-card"));
+        assert(adminWardCards.length >= 2, "Administrator overview shows multiple wards");
+        assert(
+          adminWardCards.some((card) => card.textContent.includes("Mapleton 1st Ward") && card.textContent.includes("Bishop Reynolds")) &&
+          adminWardCards.some((card) => card.textContent.includes("Pocatello Creek Ward") && card.textContent.includes("Jacob Chandler")),
+          "Administrator overview shows wards with assigned bishops"
+        );
+        assert(
+          adminWardCards.some((card) => card.textContent.includes("Brother Jensen") && card.textContent.includes("approved")),
+          "Administrator overview shows Youth leader access status"
+        );
+        await openAdminView(reloadedDoc, "Ward Management");
+        assert(Boolean(reloadedDoc.getElementById("createAdminWardForm")), "Administrator can open ward management");
+        const initialManagedWardNames = Array.from(reloadedDoc.querySelectorAll(".admin-ward-card h3")).map((node) => node.textContent);
+        reloadedDoc.querySelector("#createAdminWardForm input[name='wardName']").value = "Cedar Ridge Ward";
+        submit(reloadedDoc.getElementById("createAdminWardForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".admin-ward-card h3")).some((node) => node.textContent.includes("Cedar Ridge Ward")),
+          "Administrator can create a new ward"
+        );
+        reloadedDoc.querySelector("#createAdminWardForm input[name='wardName']").value = "Cedar Ridge";
+        lastAlertMessage = "";
+        submit(reloadedDoc.getElementById("createAdminWardForm"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        assert(lastAlertMessage.includes("already exists"), "Administrator duplicate ward creation is blocked by normalized ward name");
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".admin-ward-card h3")).filter((node) => node.textContent.includes("Cedar Ridge Ward")).length === 1,
+          "Duplicate ward attempt does not create a second ward card"
+        );
+        const createBishopForm = reloadedDoc.getElementById("createAdminBishopForm");
+        createBishopForm.elements.bishopName.value = "Bishop Cedar";
+        createBishopForm.elements.bishopEmail.value = "cedar.bishop@example.com";
+        createBishopForm.elements.bishopPassword.value = "cedarpass";
+        createBishopForm.elements.bishopWard.value = "Cedar Ridge Ward";
+        submit(createBishopForm);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".admin-ward-card")).some((card) =>
+            card.textContent.includes("Cedar Ridge Ward") && card.textContent.includes("Bishop Cedar")
+          ),
+          "Administrator can create a bishop profile assigned to a ward"
+        );
+        const assignBishopForm = reloadedDoc.getElementById("assignAdminBishopWardForm");
+        assignBishopForm.elements.assignBishopId.value = Array.from(assignBishopForm.elements.assignBishopId.options)
+          .find((option) => option.textContent.includes("Bishop Cedar")).value;
+        assignBishopForm.elements.assignWardName.value = "Pocatello Creek Ward";
+        submit(assignBishopForm);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".admin-ward-card")).some((card) =>
+            card.textContent.includes("Pocatello Creek Ward") && card.textContent.includes("Bishop Cedar")
+          ),
+          "Administrator can reassign a bishop to another ward"
+        );
+        await openAdminView(reloadedDoc, "Overview");
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".admin-ward-card")).some((card) =>
+            card.textContent.includes("Pocatello Creek Ward") && card.textContent.includes("Bishop Cedar")
+          ),
+          "Administrator overview reflects bishop ward assignment"
+        );
+        assert(initialManagedWardNames.includes("Mapleton 1st Ward"), "Existing wards stay visible after ward management changes");
+        click(reloadedDoc.getElementById("logoutButton"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        click(reloadedDoc.getElementById("userTab"));
         reloadedDoc.getElementById("username").value = "josh@example.com";
         reloadedDoc.getElementById("password").value = "goal123";
         submit(reloadedDoc.getElementById("loginForm"));
@@ -131,9 +222,13 @@
           reloadedDoc.getElementById("sessionTitle").textContent.includes("Josh Carter"),
           `User login succeeds${lastAlertMessage ? ` (${lastAlertMessage})` : ""}`
         );
+        assert(reloadedDoc.getElementById("authPanel").classList.contains("hidden"), "Access panel is hidden after login");
+        assert(reloadedDoc.querySelector(".app-grid").classList.contains("is-logged-in"), "Dashboard expands to full width after login");
+        click(reloadedDoc.getElementById("accountMenuButton"));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         const progressTracker = reloadedDoc.getElementById("sessionProgressTracker");
-        assert(!progressTracker.classList.contains("hidden"), "Youth sidebar shows the progress tracker");
-        assert(progressTracker.textContent.includes("Overall Progress"), "Progress tracker renders in the left sidebar");
+        assert(!progressTracker.classList.contains("hidden"), "Youth account menu shows the progress tracker");
+        assert(progressTracker.textContent.includes("Overall Progress"), "Progress tracker renders in the account menu");
         assert(progressTracker.querySelectorAll(".sidebar-progress-level").length === 3, "Youth progress tracker renders three award levels");
         assert(progressTracker.textContent.includes("Iron Rod Award"), "Young Men level 1 award renders");
         assert(progressTracker.textContent.includes("Stripling Warrior Award"), "Young Men level 2 award renders");
@@ -144,6 +239,24 @@
           Array.from(reloadedDoc.querySelectorAll(".goal-points-badge")).some((badge) => badge.textContent.includes("40")),
           "Existing goal point values render on goal cards"
         );
+        const originalYouthGoalTitles = Array.from(reloadedDoc.querySelectorAll(".goal-title")).map((node) => node.textContent);
+        click(Array.from(reloadedDoc.querySelectorAll("[data-youth-view]")).find((button) =>
+          button.textContent.includes("Prioritize Goals")
+        ));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        let priorityTiles = Array.from(reloadedDoc.querySelectorAll(".goal-priority-tile"));
+        assert(priorityTiles.length >= 2, "Youth priority board renders movable goal tiles");
+        dragBefore(frame.contentWindow, priorityTiles[1], priorityTiles[0]);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        priorityTiles = Array.from(reloadedDoc.querySelectorAll(".goal-priority-tile"));
+        assert(priorityTiles[0].querySelector("h4").textContent === originalYouthGoalTitles[1], "Youth can drag a goal tile before another goal");
+        click(Array.from(reloadedDoc.querySelectorAll("[data-youth-view]")).find((button) =>
+          button.textContent.includes("Existing Goals")
+        ));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        assert(reloadedDoc.querySelector(".goal-title").textContent === originalYouthGoalTitles[1], "Youth goal list follows the saved priority order");
 
         click(Array.from(reloadedDoc.querySelectorAll("[data-youth-view]")).find((button) =>
           button.textContent.includes("Create Goal")
@@ -177,12 +290,52 @@
         click(reloadedDoc.getElementById("logoutButton"));
         await new Promise((resolve) => setTimeout(resolve, 150));
 
+        click(reloadedDoc.getElementById("userTab"));
+        reloadedDoc.getElementById("username").value = "eli.roberts@example.com";
+        reloadedDoc.getElementById("password").value = "pocatello1";
+        submit(reloadedDoc.getElementById("loginForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        assert(reloadedDoc.getElementById("sessionTitle").textContent.includes("Eli Roberts"), "Pocatello Creek sample youth login succeeds");
+        const pocatelloGoalCards = Array.from(reloadedDoc.querySelectorAll(".goal-card"));
+        assert(pocatelloGoalCards.length === 2, "Pocatello Creek sample youth has two sample goals");
+        assert(
+          pocatelloGoalCards.every((card) =>
+            card.querySelector(".goal-points-badge").textContent.includes("50") &&
+            card.querySelector(".progress-value").textContent.includes("50%")
+          ),
+          "Pocatello Creek sample goals are 50 points and 50 percent complete"
+        );
+        click(reloadedDoc.getElementById("logoutButton"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        click(reloadedDoc.getElementById("parentTab"));
+        reloadedDoc.getElementById("username").value = "parent.carter@example.com";
+        reloadedDoc.getElementById("password").value = "parent123";
+        submit(reloadedDoc.getElementById("loginForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        assert(reloadedDoc.getElementById("sessionTitle").textContent.includes("Taylor Carter"), "Demo parent login succeeds");
+        assert(reloadedDoc.getElementById("dashboardTitle").textContent.includes("family dashboard"), "Demo parent lands on the family dashboard");
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".parent-child-card")).some((card) =>
+            card.textContent.includes("Josh Carter") && card.querySelectorAll(".goal-card").length >= 2
+          ),
+          "Demo parent can see linked youth goal progress"
+        );
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".parent-child-card input[type='checkbox']")).every((checkbox) => checkbox.disabled),
+          "Parent dashboard shows read-only goal progress"
+        );
+        click(reloadedDoc.getElementById("logoutButton"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
         click(reloadedDoc.getElementById("leaderTab"));
         reloadedDoc.getElementById("username").value = "leader.one@example.com";
         reloadedDoc.getElementById("password").value = "approve789";
         submit(reloadedDoc.getElementById("loginForm"));
         await new Promise((resolve) => setTimeout(resolve, 250));
 
+        await openAdminView(reloadedDoc, "Review Goals");
         let leaderPlanCard = Array.from(reloadedDoc.querySelectorAll(".goal-card")).find((card) =>
           card.querySelector(".goal-title").textContent === "Scripture Study Goal"
         );
@@ -252,6 +405,7 @@
         await new Promise((resolve) => setTimeout(resolve, 250));
 
         assert(reloadedDoc.getElementById("sessionTitle").textContent.includes("Brother Jensen"), "Leader login succeeds");
+        await openAdminView(reloadedDoc, "Review Goals");
         const visibleLeaderGoalTitles = Array.from(reloadedDoc.querySelectorAll(".goal-title")).map((node) => node.textContent);
         assert(!visibleLeaderGoalTitles.includes("Temple Family History Goal"), "Young Men leader cannot see Young Women goals");
         const leaderGoalCard = Array.from(reloadedDoc.querySelectorAll(".goal-card")).find((card) =>
@@ -341,6 +495,7 @@
         submit(reloadedDoc.getElementById("loginForm"));
         await new Promise((resolve) => setTimeout(resolve, 250));
 
+        await openAdminView(reloadedDoc, "Review Goals");
         const extensionCard = Array.from(reloadedDoc.querySelectorAll(".goal-card")).find((card) =>
           card.querySelector(".goal-title").textContent === "Scripture Study Goal"
         );
@@ -360,9 +515,11 @@
           "The new deadline is shown on the goal"
         );
 
+        await openAdminView(reloadedDoc, "Create Youth Account");
         const leaderOrgSelect = reloadedDoc.querySelector("#createYouthAccountForm select[name='youthOrganization']");
         assert(leaderOrgSelect.options.length === 1 && leaderOrgSelect.value === "young_men", "Young Men leader can only create Young Men youth accounts");
 
+        await openAdminView(reloadedDoc, "Create Goal For Youth");
         reloadedDoc.querySelector("#createManagedGoalForm select[name='targetYouthId']").value = "u1";
         reloadedDoc.querySelector("#createManagedGoalForm input[name='goalTitle']").value = "Leader Assigned Goal";
         reloadedDoc.querySelector("#createManagedGoalForm textarea[name='goalSummary']").value = "Assigned by a Youth leader.";
@@ -410,23 +567,126 @@
         );
         assert(Boolean(createdTemplateCard), "Leader can edit an existing template");
 
+        await openAdminView(reloadedDoc, "Create Youth Account");
         reloadedDoc.getElementsByName("youthName")[0].value = "Caleb Young";
-        reloadedDoc.getElementsByName("youthEmail")[0].value = "caleb@example.com";
         reloadedDoc.getElementsByName("youthOrganization")[0].value = "young_men";
-        reloadedDoc.getElementsByName("youthPassword")[0].value = "welcome123";
         submit(reloadedDoc.getElementById("createYouthAccountForm"));
         await new Promise((resolve) => setTimeout(resolve, 250));
 
+        await openAdminView(reloadedDoc, "Overview");
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".managed-youth-card")).some((card) =>
+            card.textContent.includes("Caleb Young") && card.textContent.includes("Login not set up")
+          ),
+          "Leader can create a youth profile without login credentials"
+        );
+        const calebCard = Array.from(reloadedDoc.querySelectorAll(".managed-youth-card")).find((card) =>
+          card.textContent.includes("Caleb Young")
+        );
+        click(Array.from(calebCard.querySelectorAll("button")).find((button) => button.textContent.includes("Edit Youth Account")));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        const editYouthForm = reloadedDoc.getElementById("editYouthAccountForm");
+        editYouthForm.elements.youthName.value = "Caleb Young Updated";
+        editYouthForm.elements.youthEmail.value = "caleb.updated@example.com";
+        submit(editYouthForm);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".managed-youth-card")).some((card) =>
+            card.textContent.includes("Caleb Young Updated") && card.textContent.includes("Email ready")
+          ),
+          "Leader can edit a youth profile and mark the email ready for invitation"
+        );
+        const updatedCalebCard = Array.from(reloadedDoc.querySelectorAll(".managed-youth-card")).find((card) =>
+          card.textContent.includes("Caleb Young Updated")
+        );
+        click(Array.from(updatedCalebCard.querySelectorAll("button")).find((button) => button.textContent.includes("Edit Youth Account")));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        const parentForm = reloadedDoc.getElementById("createParentForYouthForm");
+        parentForm.elements.parentName.value = "Morgan Young";
+        parentForm.elements.parentEmail.value = "morgan.parent@example.com";
+        parentForm.elements.parentPassword.value = "parentpass";
+        parentForm.elements.parentRelationship.value = "Father";
+        submit(parentForm);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".parent-link-row")).some((row) =>
+            row.textContent.includes("Morgan Young") && row.textContent.includes("Father") && row.textContent.includes("Login ready")
+          ),
+          "Leader can create and link a parent profile from the youth editor"
+        );
+        await openAdminView(reloadedDoc, "Overview");
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".managed-youth-card")).some((card) =>
+            card.textContent.includes("Caleb Young Updated") && card.textContent.includes("Parents: Morgan Young")
+          ),
+          "Youth cards show linked parent names"
+        );
+        const joshManagedCard = Array.from(reloadedDoc.querySelectorAll(".managed-youth-card")).find((card) =>
+          card.textContent.includes("Josh Carter")
+        );
+        click(Array.from(joshManagedCard.querySelectorAll("button")).find((button) => button.textContent.includes("Edit Youth Account")));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        const secondYouthParentForm = reloadedDoc.getElementById("createParentForYouthForm");
+        secondYouthParentForm.elements.parentName.value = "Morgan Young";
+        secondYouthParentForm.elements.parentEmail.value = "morgan.parent@example.com";
+        secondYouthParentForm.elements.parentPassword.value = "";
+        secondYouthParentForm.elements.parentRelationship.value = "Father";
+        submit(secondYouthParentForm);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        assert(
+          Array.from(reloadedDoc.querySelectorAll(".parent-link-row")).some((row) =>
+            row.textContent.includes("Morgan Young") && row.textContent.includes("Father")
+          ),
+          "Leader can link an existing parent profile to a second youth"
+        );
+
+        click(reloadedDoc.getElementById("logoutButton"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        click(reloadedDoc.getElementById("parentTab"));
+        reloadedDoc.getElementById("username").value = "morgan.parent@example.com";
+        reloadedDoc.getElementById("password").value = "parentpass";
+        submit(reloadedDoc.getElementById("loginForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        assert(reloadedDoc.getElementById("sessionTitle").textContent.includes("Morgan Young"), "Parent login succeeds");
+        assert(
+          reloadedDoc.getElementById("dashboardTitle").textContent.includes("family dashboard"),
+          "Parent lands on the family dashboard"
+        );
+        assert(reloadedDoc.querySelector(".parent-child-card").textContent.includes("Caleb Young Updated"), "Parent can see linked youth on the family dashboard");
+        const parentChildCards = Array.from(reloadedDoc.querySelectorAll(".parent-child-card"));
+        assert(parentChildCards.length >= 2, "Parent dashboard can show multiple linked youth");
+        assert(
+          parentChildCards.some((card) => card.textContent.includes("Caleb Young Updated")) &&
+          parentChildCards.some((card) => card.textContent.includes("Josh Carter")),
+          "Parent can see both linked kids on the family dashboard"
+        );
+
+        click(reloadedDoc.getElementById("logoutButton"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        click(reloadedDoc.getElementById("leaderTab"));
+        reloadedDoc.getElementById("username").value = "leader.one@example.com";
+        reloadedDoc.getElementById("password").value = "approve789";
+        submit(reloadedDoc.getElementById("loginForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        await openAdminView(reloadedDoc, "Review Goals");
         adminGoalCard = Array.from(reloadedDoc.querySelectorAll(".goal-card")).find((card) =>
           card.querySelector(".goal-title").textContent === "Leader Assigned Goal Updated"
         );
         editorOverlay = await openGoalEditor(reloadedDoc, adminGoalCard);
         const copyTargetSelect = editorOverlay.querySelector("select[name='copyGoalTarget']");
-        copyTargetSelect.value = Array.from(copyTargetSelect.options).find((option) => option.textContent.includes("Caleb Young")).value;
+        copyTargetSelect.value = Array.from(copyTargetSelect.options).find((option) => option.textContent.includes("Caleb Young Updated")).value;
         change(copyTargetSelect);
         click(Array.from(editorOverlay.querySelectorAll("button")).find((button) => button.textContent.includes("Copy Goal")));
         await new Promise((resolve) => setTimeout(resolve, 250));
 
+        await openAdminView(reloadedDoc, "Template Editor");
         const templateCards = reloadedDoc.querySelectorAll(".template-grid .form-card");
         assert(templateCards.length >= 2, "Leader can see goal templates");
         click(Array.from(reloadedDoc.querySelectorAll(".template-list-item")).find((button) =>
@@ -504,21 +764,117 @@
         await new Promise((resolve) => setTimeout(resolve, 150));
 
         click(reloadedDoc.getElementById("bishopTab"));
+        reloadedDoc.getElementById("username").value = "pocatello.bishop@example.com";
+        reloadedDoc.getElementById("password").value = "steward456";
+        submit(reloadedDoc.getElementById("loginForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        await openAdminView(reloadedDoc, "Overview");
+
+        const pocatelloBishopYouthCards = Array.from(reloadedDoc.querySelectorAll(".managed-youth-card"));
+        assert(
+          pocatelloBishopYouthCards.some((card) => card.textContent.includes("Eli Roberts")) &&
+          pocatelloBishopYouthCards.some((card) => card.textContent.includes("Sophie Martin")),
+          "Pocatello Creek bishop sees both sample youth in the ward"
+        );
+        await openAdminView(reloadedDoc, "Review Goals");
+        const pocatelloBishopGoalCards = Array.from(reloadedDoc.querySelectorAll(".goal-card"));
+        assert(
+          pocatelloBishopGoalCards.filter((card) =>
+            card.textContent.includes("Eli Roberts") || card.textContent.includes("Sophie Martin")
+          ).length === 4,
+          "Pocatello Creek bishop sees all four sample goals"
+        );
+
+        click(reloadedDoc.getElementById("logoutButton"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        click(reloadedDoc.getElementById("bishopTab"));
+        click(reloadedDoc.getElementById("createAccountModeButton"));
+        reloadedDoc.getElementById("registerName").value = "Jacob Chandler";
+        reloadedDoc.getElementById("registerEmail").value = "jacob.chandler@example.com";
+        reloadedDoc.getElementById("registerWard").value = "Pocatello Creek";
+        reloadedDoc.getElementById("registerPassword").value = "steward789";
+        submit(reloadedDoc.getElementById("registerForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        await openAdminView(reloadedDoc, "Overview");
+        const normalizedWardYouthCards = Array.from(reloadedDoc.querySelectorAll(".managed-youth-card"));
+        assert(
+          normalizedWardYouthCards.some((card) => card.textContent.includes("Eli Roberts")) &&
+          normalizedWardYouthCards.some((card) => card.textContent.includes("Sophie Martin")),
+          "Bishop stored as Pocatello Creek sees youth stored as Pocatello Creek Ward"
+        );
+        click(reloadedDoc.getElementById("logoutButton"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        click(reloadedDoc.getElementById("bishopTab"));
         reloadedDoc.getElementById("username").value = "ward.bishop@example.com";
         reloadedDoc.getElementById("password").value = "steward123";
         submit(reloadedDoc.getElementById("loginForm"));
         await new Promise((resolve) => setTimeout(resolve, 250));
 
+        await openAdminView(reloadedDoc, "Review Goals");
         const bishopTitles = Array.from(reloadedDoc.querySelectorAll(".goal-title")).map((node) => node.textContent);
         assert(bishopTitles.includes("Temple Family History Goal"), "Bishop can see youth goals across both organizations in the ward");
         assert(bishopTitles.includes("Leader Assigned Goal Updated"), "Bishop can also see goals created by Youth leaders");
+        await openAdminView(reloadedDoc, "Create Youth Account");
         const bishopOrgSelect = reloadedDoc.querySelector("#createYouthAccountForm select[name='youthOrganization']");
         assert(bishopOrgSelect.options.length === 2, "Bishop can create youth accounts in both organizations");
 
-        const approveLeaderButton = Array.from(reloadedDoc.querySelectorAll("button")).find((button) => button.textContent.includes("Approve Youth Leader"));
-        assert(Boolean(approveLeaderButton), "Bishop can see pending Youth leader accounts");
+        await openAdminView(reloadedDoc, "Ward Approval");
+        const newLeaderAccessCard = Array.from(reloadedDoc.querySelectorAll(".access-review-card")).find((card) =>
+          card.textContent.includes("New Leader")
+        );
+        assert(Boolean(newLeaderAccessCard), "Bishop can see pending Youth leader accounts");
+        const approveLeaderButton = Array.from(newLeaderAccessCard.querySelectorAll("button")).find((button) => button.textContent.includes("Approve Access"));
+        assert(Boolean(approveLeaderButton), "Bishop can approve Youth leader access");
         click(approveLeaderButton);
         await new Promise((resolve) => setTimeout(resolve, 250));
+
+        const morganAccessCard = Array.from(reloadedDoc.querySelectorAll(".access-review-card")).find((card) =>
+          card.textContent.includes("Morgan Young")
+        );
+        assert(Boolean(morganAccessCard), "Bishop can see parent access in Ward Approval");
+        const disableParentButton = Array.from(morganAccessCard.querySelectorAll("button")).find((button) => button.textContent.includes("Disable Access"));
+        assert(Boolean(disableParentButton), "Bishop can disable parent access");
+        click(disableParentButton);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        click(reloadedDoc.getElementById("logoutButton"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        lastAlertMessage = "";
+        click(reloadedDoc.getElementById("parentTab"));
+        reloadedDoc.getElementById("username").value = "morgan.parent@example.com";
+        reloadedDoc.getElementById("password").value = "parentpass";
+        submit(reloadedDoc.getElementById("loginForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        assert(lastAlertMessage.includes("disabled"), "Disabled parent is blocked at sign-in");
+
+        click(reloadedDoc.getElementById("bishopTab"));
+        reloadedDoc.getElementById("username").value = "ward.bishop@example.com";
+        reloadedDoc.getElementById("password").value = "steward123";
+        submit(reloadedDoc.getElementById("loginForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        await openAdminView(reloadedDoc, "Ward Approval");
+        const disabledMorganAccessCard = Array.from(reloadedDoc.querySelectorAll(".access-review-card")).find((card) =>
+          card.textContent.includes("Morgan Young") && card.textContent.includes("Disabled")
+        );
+        assert(Boolean(disabledMorganAccessCard), "Bishop can see disabled parent status");
+        const enableParentButton = Array.from(disabledMorganAccessCard.querySelectorAll("button")).find((button) => button.textContent.includes("Enable Access"));
+        assert(Boolean(enableParentButton), "Bishop can re-enable parent access");
+        click(enableParentButton);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        click(reloadedDoc.getElementById("logoutButton"));
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        lastAlertMessage = "";
+        click(reloadedDoc.getElementById("parentTab"));
+        reloadedDoc.getElementById("username").value = "morgan.parent@example.com";
+        reloadedDoc.getElementById("password").value = "parentpass";
+        submit(reloadedDoc.getElementById("loginForm"));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        assert(reloadedDoc.getElementById("sessionTitle").textContent.includes("Morgan Young"), "Re-enabled parent can sign in");
 
         click(reloadedDoc.getElementById("logoutButton"));
         await new Promise((resolve) => setTimeout(resolve, 150));

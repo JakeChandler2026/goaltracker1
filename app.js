@@ -30,7 +30,7 @@ const authClient = window.BishopGoalTrackerAuthClient || {
   },
   async signUp({ appState, role, name, email, ward, organization, password, createId }) {
     const newUser = {
-      id: createId(role === "bishop" ? "bishop" : role === "youth_leader" ? "leader" : "youth"),
+      id: createId(role === "administrator" ? "admin" : role === "bishop" ? "bishop" : role === "youth_leader" ? "leader" : role === "parent" ? "parent" : "youth"),
       role,
       name,
       email,
@@ -76,12 +76,21 @@ const AWARD_NAMES_BY_ORGANIZATION = {
 };
 
 const firstRunState = {
+  wards: [
+    { id: "w1", name: "Mapleton 1st Ward" },
+    { id: "w2", name: "Pocatello Creek Ward" }
+  ],
   users: [
+    { id: "a1", role: "administrator", email: "admin@example.com", password: "admin123", name: "Stake Administrator", ward: "All Wards", organization: "all", approvalStatus: "verified" },
     { id: "u1", role: "youth", email: "josh@example.com", password: "goal123", name: "Josh Carter", ward: "Mapleton 1st Ward", organization: "young_men" },
     { id: "u2", role: "youth", email: "maria@example.com", password: "growth456", name: "Maria Lopez", ward: "Mapleton 1st Ward", organization: "young_women" },
+    { id: "u3", role: "youth", email: "eli.roberts@example.com", password: "pocatello1", name: "Eli Roberts", ward: "Pocatello Creek Ward", organization: "young_men" },
+    { id: "u4", role: "youth", email: "sophie.martin@example.com", password: "pocatello2", name: "Sophie Martin", ward: "Pocatello Creek Ward", organization: "young_women" },
+    { id: "p1", role: "parent", email: "parent.carter@example.com", password: "parent123", name: "Taylor Carter", ward: "Mapleton 1st Ward", organization: "all", approvalStatus: "verified", loginStatus: "verified" },
     { id: "l1", role: "youth_leader", email: "leader.one@example.com", password: "approve789", name: "Brother Jensen", ward: "Mapleton 1st Ward", organization: "young_men", approvalStatus: "approved" },
     { id: "l2", role: "youth_leader", email: "leader.two@example.com", password: "hearts456", name: "Sister Lopez", ward: "Mapleton 1st Ward", organization: "young_women", approvalStatus: "approved" },
-    { id: "b1", role: "bishop", email: "ward.bishop@example.com", password: "steward123", name: "Bishop Reynolds", ward: "Mapleton 1st Ward", approvalStatus: "verified" }
+    { id: "b1", role: "bishop", email: "ward.bishop@example.com", password: "steward123", name: "Bishop Reynolds", ward: "Mapleton 1st Ward", approvalStatus: "verified" },
+    { id: "b2", role: "bishop", email: "pocatello.bishop@example.com", password: "steward456", name: "Jacob Chandler", ward: "Pocatello Creek Ward", approvalStatus: "verified" }
   ],
   goals: [
     {
@@ -131,6 +140,82 @@ const firstRunState = {
         { id: "sg8", title: "Verify dates and places", completed: true },
         { id: "sg9", title: "Submit final names", completed: true }
       ]
+    },
+    {
+      id: "g4",
+      userId: "u3",
+      title: "Build a Scripture Study Habit",
+      summary: "Create a steady weekly scripture study rhythm and record personal insights.",
+      points: 50,
+      priorityOrder: 100,
+      goalApproved: true,
+      goalApprovedBy: "Bishop Reynolds",
+      goalApprovedAt: "2026-04-01",
+      deadline: "2026-12-31",
+      leaderApproved: false,
+      leaderApprovedBy: null,
+      completedAt: null,
+      subGoals: [
+        { id: "sg10", title: "Complete two weeks of study", repeatCount: 1, completedUnits: ["2026-04-10"] },
+        { id: "sg11", title: "Share one insight with a leader", repeatCount: 1, completedUnits: [null] }
+      ]
+    },
+    {
+      id: "g5",
+      userId: "u3",
+      title: "Serve a Neighbor",
+      summary: "Plan and complete a simple act of service for someone in the ward neighborhood.",
+      points: 50,
+      priorityOrder: 200,
+      goalApproved: true,
+      goalApprovedBy: "Bishop Reynolds",
+      goalApprovedAt: "2026-04-01",
+      deadline: "2026-12-31",
+      leaderApproved: false,
+      leaderApprovedBy: null,
+      completedAt: null,
+      subGoals: [
+        { id: "sg12", title: "Choose a person to serve", repeatCount: 1, completedUnits: ["2026-04-12"] },
+        { id: "sg13", title: "Finish the service visit", repeatCount: 1, completedUnits: [null] }
+      ]
+    },
+    {
+      id: "g6",
+      userId: "u4",
+      title: "Prepare a Temple Name",
+      summary: "Research a family name and prepare it for temple work.",
+      points: 50,
+      priorityOrder: 100,
+      goalApproved: true,
+      goalApprovedBy: "Bishop Reynolds",
+      goalApprovedAt: "2026-04-01",
+      deadline: "2026-12-31",
+      leaderApproved: false,
+      leaderApprovedBy: null,
+      completedAt: null,
+      subGoals: [
+        { id: "sg14", title: "Find a family record", repeatCount: 1, completedUnits: ["2026-04-11"] },
+        { id: "sg15", title: "Verify and prepare the name", repeatCount: 1, completedUnits: [null] }
+      ]
+    },
+    {
+      id: "g7",
+      userId: "u4",
+      title: "Plan a Class Activity",
+      summary: "Help plan a meaningful activity that builds friendship and faith.",
+      points: 50,
+      priorityOrder: 200,
+      goalApproved: true,
+      goalApprovedBy: "Bishop Reynolds",
+      goalApprovedAt: "2026-04-01",
+      deadline: "2026-12-31",
+      leaderApproved: false,
+      leaderApprovedBy: null,
+      completedAt: null,
+      subGoals: [
+        { id: "sg16", title: "Draft the activity idea", repeatCount: 1, completedUnits: ["2026-04-13"] },
+        { id: "sg17", title: "Coordinate the final plan", repeatCount: 1, completedUnits: [null] }
+      ]
     }
   ],
   templates: [
@@ -145,13 +230,18 @@ const firstRunState = {
       ]
     }
   ],
+  parentYouthLinks: [
+    { parentId: "p1", youthId: "u1", relationship: "Parent" }
+  ],
   session: null
 };
 
 const elements = {
   userTab: document.getElementById("userTab"),
+  parentTab: document.getElementById("parentTab"),
   leaderTab: document.getElementById("leaderTab"),
   bishopTab: document.getElementById("bishopTab"),
+  adminTab: document.getElementById("adminTab"),
   signInModeButton: document.getElementById("signInModeButton"),
   createAccountModeButton: document.getElementById("createAccountModeButton"),
   userAuthModes: document.getElementById("userAuthModes"),
@@ -163,6 +253,11 @@ const elements = {
   identityLabel: document.getElementById("identityLabel"),
   loginView: document.getElementById("loginView"),
   sessionView: document.getElementById("sessionView"),
+  accountMenu: document.getElementById("accountMenu"),
+  accountMenuButton: document.getElementById("accountMenuButton"),
+  accountMenuPanel: document.getElementById("accountMenuPanel"),
+  authPanel: document.getElementById("authPanel"),
+  appGrid: document.querySelector(".app-grid"),
   sessionBadge: document.getElementById("sessionBadge"),
   sessionTitle: document.getElementById("sessionTitle"),
   sessionDescription: document.getElementById("sessionDescription"),
@@ -181,7 +276,9 @@ let activeRole = "youth";
 let activeUserAuthMode = "signin";
 let activeTemplateId = null;
 let activeYouthDashboardView = "goals";
+let activeAdminDashboardView = "overview";
 let activeGoalEditorId = null;
+let activeEditingYouthId = null;
 let state = normalizeState(getFallbackState());
 let bootstrappedState = false;
 
@@ -191,9 +288,11 @@ function cloneFirstRunState() {
 
 function createEmptyState() {
   return {
+    wards: [],
     users: [],
     goals: [],
     templates: [],
+    parentYouthLinks: [],
     session: null
   };
 }
@@ -202,8 +301,57 @@ function getFallbackState() {
   return isSupabaseRuntime ? createEmptyState() : cloneFirstRunState();
 }
 
+function mergeDemoSeedState(loadedState) {
+  if (isSupabaseRuntime) {
+    return { state: loadedState, changed: false };
+  }
+
+  const nextState = JSON.parse(JSON.stringify(loadedState));
+  const seededState = normalizeState(cloneFirstRunState());
+  let changed = false;
+
+  const mergeById = (collectionName) => {
+    const existingIds = new Set((nextState[collectionName] || []).map((item) => item.id));
+    seededState[collectionName].forEach((seededItem) => {
+      if (!existingIds.has(seededItem.id)) {
+        nextState[collectionName].push(JSON.parse(JSON.stringify(seededItem)));
+        existingIds.add(seededItem.id);
+        changed = true;
+      }
+    });
+  };
+
+  mergeById("users");
+  mergeById("goals");
+  mergeById("templates");
+  mergeById("wards");
+
+  const existingParentLinks = new Set((nextState.parentYouthLinks || []).map((link) => `${link.parentId}:${link.youthId}`));
+  seededState.parentYouthLinks.forEach((seededLink) => {
+    const key = `${seededLink.parentId}:${seededLink.youthId}`;
+    if (!existingParentLinks.has(key)) {
+      nextState.parentYouthLinks.push(JSON.parse(JSON.stringify(seededLink)));
+      existingParentLinks.add(key);
+      changed = true;
+    }
+  });
+
+  return { state: normalizeState(nextState), changed };
+}
+
 function cloneStateSnapshot() {
   return JSON.parse(JSON.stringify(state));
+}
+
+function stateUsersToWardNames(appState) {
+  const wardNames = [];
+  (appState.users || []).forEach((user) => {
+    const wardName = String(user.ward || "").trim();
+    if (wardName && !wardNames.some((existingName) => isSameWard(existingName, wardName))) {
+      wardNames.push(wardName);
+    }
+  });
+  return wardNames;
 }
 
 function renderRuntimeBanner() {
@@ -256,25 +404,39 @@ async function persistTemplate(template, options = {}) {
 function normalizeState(rawState) {
   const nextState = JSON.parse(JSON.stringify(rawState));
 
+  nextState.wards = (nextState.wards || []).map((ward) => ({
+    id: ward.id || createId("ward"),
+    name: String(ward.name || "").trim()
+  })).filter((ward) => ward.name);
+
   nextState.users = nextState.users.map((user) => ({
     ...user,
     role: user.role === "user" ? "youth" : user.role === "leader" ? "youth_leader" : user.role,
     email: String(user.email || user.username || "").toLowerCase(),
     ward: String(user.ward || "").trim(),
-    organization: user.role === "bishop" ? "all" : (user.organization || (user.role === "youth" ? "young_men" : "young_men")),
-    approvalStatus: user.approvalStatus || (user.role === "youth_leader" ? "approved" : "verified")
+    organization: user.role === "bishop" || user.role === "parent" || user.role === "administrator" ? "all" : (user.organization || (user.role === "youth" ? "young_men" : "young_men")),
+    approvalStatus: user.approvalStatus || (user.role === "youth_leader" ? "approved" : "verified"),
+    loginStatus: user.loginStatus || ((user.role === "youth" || user.role === "parent") && !user.email ? "not_invited" : "verified")
   }));
 
-  nextState.goals = nextState.goals.map((goal) => {
+  nextState.parentYouthLinks = (nextState.parentYouthLinks || []).map((link) => ({
+    parentId: link.parentId,
+    youthId: link.youthId,
+    relationship: String(link.relationship || "Parent").trim() || "Parent"
+  })).filter((link) => link.parentId && link.youthId);
+
+  nextState.goals = nextState.goals.map((goal, index) => {
     const points = normalizePointValue(goal.points);
     const completionApproved = Boolean(goal.leaderApproved);
     const planApproved = typeof goal.goalApproved === "boolean"
       ? goal.goalApproved
       : points > 0 || completionApproved;
+    const parsedPriority = Number(goal.priorityOrder);
 
     return {
       ...goal,
       points,
+      priorityOrder: Number.isFinite(parsedPriority) ? parsedPriority : (index + 1) * 100,
       goalApproved: planApproved,
       goalApprovedBy: goal.goalApprovedBy || (planApproved ? goal.leaderApprovedBy || "Leader" : null),
       goalApprovedAt: goal.goalApprovedAt || (planApproved ? goal.completedAt || null : null),
@@ -308,13 +470,26 @@ function normalizeState(rawState) {
     }))
   }));
 
+  stateUsersToWardNames(nextState).forEach((wardName) => {
+    if (!nextState.wards.some((ward) => isSameWard(ward.name, wardName))) {
+      nextState.wards.push({ id: createId("ward"), name: wardName });
+    }
+  });
+
   return nextState;
 }
 
 async function loadState() {
   try {
     const loadedState = await backendClient.loadAppState(STORAGE_KEY, getFallbackState());
-    return normalizeState(loadedState);
+    const mergedState = mergeDemoSeedState(normalizeState(loadedState));
+    if (mergedState.changed) {
+      storageAdapter.setItem(STORAGE_KEY, JSON.stringify(mergedState.state));
+      backendClient.saveAppState(STORAGE_KEY, mergedState.state).catch((error) => {
+        console.warn("Demo seed merge could not be saved.", error);
+      });
+    }
+    return mergedState.state;
   } catch (error) {
     console.warn("Backend client load failed; using local fallback state.", error);
     const saved = storageAdapter.getItem(STORAGE_KEY);
@@ -325,7 +500,11 @@ async function loadState() {
     }
 
     try {
-      return normalizeState(JSON.parse(saved));
+      const mergedState = mergeDemoSeedState(normalizeState(JSON.parse(saved)));
+      if (mergedState.changed) {
+        storageAdapter.setItem(STORAGE_KEY, JSON.stringify(mergedState.state));
+      }
+      return mergedState.state;
     } catch (fallbackError) {
       const initialState = normalizeState(getFallbackState());
       storageAdapter.setItem(STORAGE_KEY, JSON.stringify(initialState));
@@ -341,7 +520,7 @@ function loadCachedState() {
   }
 
   try {
-    return normalizeState(JSON.parse(saved));
+    return mergeDemoSeedState(normalizeState(JSON.parse(saved))).state;
   } catch (error) {
     return normalizeState(getFallbackState());
   }
@@ -362,8 +541,60 @@ function saveState() {
   });
 }
 
+function getOrderedYouthGoals(userId) {
+  return state.goals
+    .filter((goal) => goal.userId === userId)
+    .sort((a, b) => {
+      const priorityDifference = Number(a.priorityOrder || 0) - Number(b.priorityOrder || 0);
+      if (priorityDifference !== 0) {
+        return priorityDifference;
+      }
+      return state.goals.indexOf(a) - state.goals.indexOf(b);
+    });
+}
+
+function getNextGoalPriority(userId) {
+  const priorities = state.goals
+    .filter((goal) => goal.userId === userId)
+    .map((goal) => Number(goal.priorityOrder || 0));
+  return priorities.length ? Math.max(...priorities) + 100 : 100;
+}
+
+function reorderYouthGoal(userId, draggedGoalId, targetGoalId, placement = "before") {
+  if (!draggedGoalId || !targetGoalId || draggedGoalId === targetGoalId) {
+    return;
+  }
+
+  const orderedGoals = getOrderedYouthGoals(userId);
+  const draggedGoal = orderedGoals.find((goal) => goal.id === draggedGoalId);
+  const targetIndex = orderedGoals.findIndex((goal) => goal.id === targetGoalId);
+  if (!draggedGoal || targetIndex < 0) {
+    return;
+  }
+
+  const nextOrder = orderedGoals.filter((goal) => goal.id !== draggedGoalId);
+  const adjustedTargetIndex = nextOrder.findIndex((goal) => goal.id === targetGoalId);
+  const insertIndex = adjustedTargetIndex < 0 ? targetIndex : adjustedTargetIndex;
+  nextOrder.splice(placement === "after" ? insertIndex + 1 : insertIndex, 0, draggedGoal);
+  nextOrder.forEach((goal, index) => {
+    goal.priorityOrder = (index + 1) * 100;
+  });
+
+  saveState();
+  render();
+}
+
 function createId(prefix) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function getTodayDateString() {
@@ -581,6 +812,7 @@ function buildGoalFromTemplate(template, userId, deadline = getDefaultGoalDeadli
     title: template.title,
     summary: template.summary,
     points: normalizePointValue(template.points),
+    priorityOrder: getNextGoalPriority(userId),
     goalApproved: Boolean(sessionUser && isWardAdmin(sessionUser)),
     goalApprovedBy: sessionUser && isWardAdmin(sessionUser) ? sessionUser.name : null,
     goalApprovedAt: sessionUser && isWardAdmin(sessionUser) ? getTodayDateString() : null,
@@ -605,6 +837,7 @@ function cloneGoalForUser(sourceGoal, userId, deadline = (sourceGoal.deadline &&
     title: sourceGoal.title,
     summary: sourceGoal.summary,
     points: normalizePointValue(sourceGoal.points),
+    priorityOrder: getNextGoalPriority(userId),
     goalApproved: Boolean(sessionUser && isWardAdmin(sessionUser)),
     goalApprovedBy: sessionUser && isWardAdmin(sessionUser) ? sessionUser.name : null,
     goalApprovedAt: sessionUser && isWardAdmin(sessionUser) ? getTodayDateString() : null,
@@ -639,6 +872,8 @@ async function saveGoalAsTemplate(goalId) {
     }))
   };
 
+  activeAdminDashboardView = "templates";
+  activeGoalEditorId = null;
   await persistTemplate(template, { isCreate: true });
   activeTemplateId = template.id;
   render();
@@ -879,6 +1114,34 @@ function closeGoalEditor() {
   render();
 }
 
+function toggleAccountMenu() {
+  if (!elements.accountMenuPanel || !elements.accountMenuButton) {
+    return;
+  }
+
+  const willOpen = elements.accountMenuPanel.classList.contains("hidden");
+  elements.accountMenuPanel.classList.toggle("hidden", !willOpen);
+  elements.accountMenuButton.setAttribute("aria-expanded", String(willOpen));
+}
+
+function closeAccountMenu() {
+  if (!elements.accountMenuPanel || !elements.accountMenuButton) {
+    return;
+  }
+
+  elements.accountMenuPanel.classList.add("hidden");
+  elements.accountMenuButton.setAttribute("aria-expanded", "false");
+}
+
+function getInitials(name) {
+  return String(name || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("") || "AC";
+}
+
 function getGoalStatus(goal) {
   const progress = getGoalProgress(goal);
 
@@ -913,17 +1176,32 @@ function getOrganizationLabel(value) {
   return value === "young_women" ? "Young Women" : value === "young_men" ? "Young Men" : "All Youth";
 }
 
+function normalizeWardKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/\bward\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isSameWard(leftWard, rightWard) {
+  const leftKey = normalizeWardKey(leftWard);
+  const rightKey = normalizeWardKey(rightWard);
+  return Boolean(leftKey && rightKey && leftKey === rightKey);
+}
+
 function canManageYouth(manager, youth) {
   if (!manager || !youth || youth.role !== "youth") {
     return false;
   }
 
   if (manager.role === "bishop") {
-    return manager.ward === youth.ward;
+    return isSameWard(manager.ward, youth.ward);
   }
 
   if (manager.role === "youth_leader") {
-    return manager.ward === youth.ward && manager.organization === youth.organization;
+    return isSameWard(manager.ward, youth.ward) && manager.organization === youth.organization;
   }
 
   return false;
@@ -933,8 +1211,39 @@ function getManagedYouth(manager) {
   return state.users.filter((user) => canManageYouth(manager, user));
 }
 
+function getParentsForYouth(youthId) {
+  return (state.parentYouthLinks || [])
+    .filter((link) => link.youthId === youthId)
+    .map((link) => ({
+      link,
+      parent: state.users.find((user) => user.id === link.parentId && user.role === "parent")
+    }))
+    .filter((item) => item.parent);
+}
+
+function getLinkedYouthForParent(parentId) {
+  return (state.parentYouthLinks || [])
+    .filter((link) => link.parentId === parentId)
+    .map((link) => ({
+      link,
+      youth: state.users.find((user) => user.id === link.youthId && user.role === "youth")
+    }))
+    .filter((item) => item.youth);
+}
+
+function getParentLoginLabel(parent) {
+  if (!parent.email) {
+    return "Login not set up";
+  }
+  return parent.loginStatus === "verified" ? "Login ready" : "Email ready";
+}
+
 function isWardAdmin(user) {
   return Boolean(user && (user.role === "bishop" || user.role === "youth_leader"));
+}
+
+function isGlobalAdmin(user) {
+  return Boolean(user && user.role === "administrator");
 }
 
 function getAllowedOrganizationsForManager(manager) {
@@ -954,11 +1263,36 @@ function getAllowedOrganizationsForManager(manager) {
 }
 
 function getWardBishop(ward) {
-  return state.users.find((user) => user.role === "bishop" && user.ward === ward) || null;
+  return state.users.find((user) => user.role === "bishop" && isSameWard(user.ward, ward)) || null;
 }
 
 function getPendingWardLeaders(ward) {
-  return state.users.filter((user) => user.role === "youth_leader" && user.ward === ward && user.approvalStatus !== "approved");
+  return state.users.filter((user) => user.role === "youth_leader" && isSameWard(user.ward, ward) && user.approvalStatus !== "approved");
+}
+
+function getWardAccessUsers(ward) {
+  return state.users
+    .filter((user) => (user.role === "youth_leader" || user.role === "parent") && isSameWard(user.ward, ward))
+    .sort((left, right) => {
+      const roleDifference = left.role.localeCompare(right.role);
+      return roleDifference || left.name.localeCompare(right.name);
+    });
+}
+
+function getAccessStatusLabel(user) {
+  if (user.approvalStatus === "rejected") {
+    return "Disabled";
+  }
+
+  if (user.role === "youth_leader") {
+    return user.approvalStatus === "approved" ? "Access enabled" : "Waiting for approval";
+  }
+
+  return "Access enabled";
+}
+
+function getEnabledStatusForRole(role) {
+  return role === "youth_leader" ? "approved" : "verified";
 }
 
 function getActiveTemplate() {
@@ -988,17 +1322,25 @@ function setUserAuthMode(mode) {
 function setActiveRole(role) {
   activeRole = role;
   elements.userTab.classList.toggle("active", role === "youth");
+  elements.parentTab?.classList.toggle("active", role === "parent");
   elements.leaderTab.classList.toggle("active", role === "youth_leader");
   elements.bishopTab.classList.toggle("active", role === "bishop");
-  elements.userAuthModes.classList.remove("hidden");
+  elements.adminTab?.classList.toggle("active", role === "administrator");
+  if (role === "administrator") {
+    activeUserAuthMode = "signin";
+  }
+  elements.userAuthModes.classList.toggle("hidden", role === "administrator");
   elements.identityLabel.textContent = "Email";
   elements.username.type = "email";
   elements.username.placeholder =
+    role === "administrator" ? "Enter admin email" :
     role === "bishop" ? "Enter bishop email" :
     role === "youth_leader" ? "Enter Youth leader email" :
+    role === "parent" ? "Enter parent email" :
     "Enter youth email";
-  elements.registerOrganizationField.classList.toggle("hidden", role === "bishop");
+  elements.registerOrganizationField.classList.toggle("hidden", role === "bishop" || role === "parent" || role === "administrator");
   setUserAuthMode(activeUserAuthMode);
+  elements.userAuthModes.classList.toggle("hidden", role === "administrator");
 }
 
 async function login(event) {
@@ -1022,6 +1364,8 @@ async function login(event) {
       state = normalizeState(result.appState);
     }
     state.session = result.session;
+    activeAdminDashboardView = "overview";
+    activeYouthDashboardView = "goals";
     saveState();
     elements.loginForm.reset();
     render();
@@ -1038,7 +1382,7 @@ async function registerUser(event) {
   const name = form.elements.registerName.value.trim();
   const email = form.elements.registerEmail.value.trim().toLowerCase();
   const ward = form.elements.registerWard.value.trim();
-  const organization = activeRole === "bishop" ? "all" : form.elements.registerOrganization.value;
+  const organization = activeRole === "bishop" || activeRole === "parent" ? "all" : form.elements.registerOrganization.value;
   const password = form.elements.registerPassword.value;
 
   if (!name || !email || !ward || !password) {
@@ -1081,6 +1425,8 @@ async function registerUser(event) {
   }
 
   state.session = result.session;
+  activeAdminDashboardView = "overview";
+  activeYouthDashboardView = "goals";
   saveState();
   form.reset();
   setUserAuthMode("signin");
@@ -1090,6 +1436,9 @@ async function registerUser(event) {
 async function logout() {
   await authClient.signOut();
   state.session = null;
+  activeAdminDashboardView = "overview";
+  activeYouthDashboardView = "goals";
+  closeAccountMenu();
   saveState();
   render();
 }
@@ -1216,6 +1565,7 @@ async function addGoal(event) {
     title,
     summary,
     points: 0,
+    priorityOrder: getNextGoalPriority(sessionUser.id),
     goalApproved: false,
     goalApprovedBy: null,
     goalApprovedAt: null,
@@ -1240,7 +1590,21 @@ async function addGoal(event) {
 }
 
 function setActiveYouthDashboardView(view) {
-  activeYouthDashboardView = view === "create" ? "create" : "goals";
+  activeYouthDashboardView = ["create", "prioritize"].includes(view) ? view : "goals";
+  render();
+}
+
+function setActiveAdminDashboardView(view) {
+  activeAdminDashboardView = ["create-goal", "create-youth", "create-template", "templates", "goals", "ward-approval", "edit-youth", "ward-management"].includes(view) ? view : "overview";
+  if (activeAdminDashboardView !== "edit-youth") {
+    activeEditingYouthId = null;
+  }
+  render();
+}
+
+function openYouthAccountEditor(youthId) {
+  activeEditingYouthId = youthId;
+  activeAdminDashboardView = "edit-youth";
   render();
 }
 
@@ -1272,6 +1636,7 @@ async function createManagedGoal(event) {
     title,
     summary,
     points,
+    priorityOrder: getNextGoalPriority(targetYouth.id),
     goalApproved: true,
     goalApprovedBy: sessionUser.name,
     goalApprovedAt: getTodayDateString(),
@@ -1288,6 +1653,7 @@ async function createManagedGoal(event) {
   };
 
   await persistGoal(goal, { isCreate: true, createdBy: sessionUser.id });
+  activeAdminDashboardView = "goals";
   form.reset();
   writeDraftChecklistItems(form, []);
   render();
@@ -1347,8 +1713,9 @@ async function createTemplate(event) {
     }))
   };
 
-  await persistTemplate(template, { isCreate: true, createdBy: sessionUser.id });
   activeTemplateId = template.id;
+  activeAdminDashboardView = "templates";
+  await persistTemplate(template, { isCreate: true, createdBy: sessionUser.id });
   form.reset();
   writeDraftChecklistItems(form, []);
   render();
@@ -1390,8 +1757,8 @@ async function createYouthAccount(event) {
   const password = form.elements.youthPassword.value;
   const allowedOrganizations = getAllowedOrganizationsForManager(sessionUser);
 
-  if (!name || !email || !organization || !password) {
-    window.alert("Please complete the youth name, email, organization, and password.");
+  if (!name || !organization) {
+    window.alert("Please complete the youth name and organization.");
     return;
   }
 
@@ -1400,7 +1767,7 @@ async function createYouthAccount(event) {
     return;
   }
 
-  const emailInUse = state.users.some((user) => String(user.email || "").toLowerCase() === email);
+  const emailInUse = email && state.users.some((user) => String(user.email || "").toLowerCase() === email);
   if (emailInUse) {
     window.alert("That email already has an account.");
     return;
@@ -1414,7 +1781,8 @@ async function createYouthAccount(event) {
     password,
     ward: sessionUser.ward,
     organization,
-    approvalStatus: "verified"
+    approvalStatus: "verified",
+    loginStatus: email && password ? "verified" : email ? "invitation_ready" : "not_invited"
   };
 
   try {
@@ -1425,11 +1793,177 @@ async function createYouthAccount(event) {
     });
     state = normalizeState(nextState);
     saveState();
+    activeAdminDashboardView = "overview";
     form.reset();
     render();
   } catch (error) {
     console.warn("Youth account creation failed.", error);
     window.alert(error?.message || "The youth account could not be created right now.");
+  }
+}
+
+async function updateYouthAccount(event) {
+  event.preventDefault();
+
+  const sessionUser = getSessionUser();
+  if (!sessionUser || !isWardAdmin(sessionUser)) {
+    return;
+  }
+
+  const form = event.currentTarget;
+  const youthId = form.elements.youthId.value;
+  const youth = state.users.find((user) => user.id === youthId && canManageYouth(sessionUser, user));
+  const name = form.elements.youthName.value.trim();
+  const email = form.elements.youthEmail.value.trim().toLowerCase();
+  const organization = form.elements.youthOrganization.value;
+  const allowedOrganizations = getAllowedOrganizationsForManager(sessionUser);
+
+  if (!youth || !name || !organization) {
+    window.alert("Please choose a youth, then complete the youth name and organization.");
+    return;
+  }
+
+  if (!allowedOrganizations.includes(organization)) {
+    window.alert("You can only manage youth accounts inside the organization you serve.");
+    return;
+  }
+
+  const emailInUse = email && state.users.some((user) => user.id !== youth.id && String(user.email || "").toLowerCase() === email);
+  if (emailInUse) {
+    window.alert("That email is already attached to another account.");
+    return;
+  }
+
+  const updatedYouth = {
+    ...youth,
+    name,
+    email,
+    organization,
+    loginStatus: youth.loginStatus === "verified" ? "verified" : email ? "invitation_ready" : "not_invited"
+  };
+
+  try {
+    const nextState = await backendClient.updateYouthAccount(STORAGE_KEY, state, {
+      user: updatedYouth,
+      updatedBy: sessionUser.id,
+      fallbackState: getFallbackState()
+    });
+    state = normalizeState(nextState);
+    saveState();
+    activeEditingYouthId = null;
+    activeAdminDashboardView = "overview";
+    render();
+  } catch (error) {
+    console.warn("Youth account update failed.", error);
+    window.alert(error?.message || "The youth account could not be updated right now.");
+  }
+}
+
+async function createParentForYouth(event) {
+  event.preventDefault();
+
+  const sessionUser = getSessionUser();
+  if (!sessionUser || !isWardAdmin(sessionUser)) {
+    return;
+  }
+
+  const form = event.currentTarget;
+  const youthId = form.elements.youthId.value;
+  const youth = state.users.find((user) => user.id === youthId && canManageYouth(sessionUser, user));
+  const name = form.elements.parentName.value.trim();
+  const email = form.elements.parentEmail.value.trim().toLowerCase();
+  const password = form.elements.parentPassword?.value || "";
+  const relationship = form.elements.parentRelationship.value.trim() || "Parent";
+
+  if (!youth || !name) {
+    window.alert("Please add a parent name.");
+    return;
+  }
+
+  const emailInUse = email && state.users.some((user) => user.email === email && user.role !== "parent");
+  if (emailInUse) {
+    window.alert("That email is already attached to another non-parent account.");
+    return;
+  }
+
+  let parent = email
+    ? state.users.find((user) => user.role === "parent" && user.email === email)
+    : null;
+
+  if (!parent) {
+    parent = {
+      id: createId("parent"),
+      role: "parent",
+      name,
+      email,
+      password,
+      ward: youth.ward,
+      organization: "all",
+      approvalStatus: "verified",
+      loginStatus: email && password ? "verified" : email ? "invitation_ready" : "not_invited"
+    };
+  } else {
+    parent = {
+      ...parent,
+      name,
+      password: password || parent.password || "",
+      ward: parent.ward || youth.ward,
+      loginStatus: parent.loginStatus === "verified" || (parent.email && (password || parent.password)) ? "verified" : parent.email ? "invitation_ready" : "not_invited"
+    };
+  }
+
+  const existingLinks = state.parentYouthLinks || [];
+  const nextLinks = existingLinks.some((link) => link.parentId === parent.id && link.youthId === youth.id)
+    ? existingLinks.map((link) => link.parentId === parent.id && link.youthId === youth.id ? { ...link, relationship } : link)
+    : [...existingLinks, { parentId: parent.id, youthId: youth.id, relationship }];
+
+  try {
+    const nextState = await backendClient.updateParentYouthLinks(STORAGE_KEY, state, {
+      parent,
+      youthId: youth.id,
+      relationship,
+      parentYouthLinks: nextLinks,
+      updatedBy: sessionUser.id,
+      fallbackState: getFallbackState()
+    });
+    state = normalizeState(nextState);
+    saveState();
+    activeEditingYouthId = youth.id;
+    activeAdminDashboardView = "edit-youth";
+    render();
+  } catch (error) {
+    console.warn("Parent link update failed.", error);
+    window.alert(error?.message || "The parent could not be linked right now.");
+  }
+}
+
+async function unlinkParentFromYouth(parentId, youthId) {
+  const sessionUser = getSessionUser();
+  const youth = state.users.find((user) => user.id === youthId && canManageYouth(sessionUser, user));
+  const parent = state.users.find((user) => user.id === parentId && user.role === "parent");
+  if (!sessionUser || !isWardAdmin(sessionUser) || !youth || !parent) {
+    return;
+  }
+
+  const nextLinks = (state.parentYouthLinks || []).filter((link) => !(link.parentId === parentId && link.youthId === youthId));
+
+  try {
+    const nextState = await backendClient.updateParentYouthLinks(STORAGE_KEY, state, {
+      parent,
+      youthId,
+      unlink: true,
+      parentYouthLinks: nextLinks,
+      updatedBy: sessionUser.id,
+      fallbackState: getFallbackState()
+    });
+    state = normalizeState(nextState);
+    saveState();
+    activeEditingYouthId = youthId;
+    activeAdminDashboardView = "edit-youth";
+    render();
+  } catch (error) {
+    console.warn("Parent unlink failed.", error);
+    window.alert(error?.message || "The parent link could not be removed right now.");
   }
 }
 
@@ -1458,6 +1992,31 @@ async function approveYouthLeaderAccount(leaderId) {
     leader.approvalStatus = "pending";
     console.warn("Youth leader approval failed.", error);
     window.alert(error?.message || "The Youth leader approval could not be completed right now.");
+  }
+}
+
+async function updateWardAccessStatus(userId, approvalStatus) {
+  const sessionUser = getSessionUser();
+  const target = state.users.find((user) => user.id === userId && (user.role === "youth_leader" || user.role === "parent"));
+  if (!sessionUser || sessionUser.role !== "bishop" || !target || !isSameWard(sessionUser.ward, target.ward)) {
+    return;
+  }
+
+  const normalizedStatus = approvalStatus === "rejected" ? "rejected" : getEnabledStatusForRole(target.role);
+  try {
+    const nextState = await backendClient.updateUserAccessStatus(STORAGE_KEY, state, {
+      userId: target.id,
+      approvalStatus: normalizedStatus,
+      updatedBy: sessionUser.id,
+      fallbackState: getFallbackState()
+    });
+    state = normalizeState(nextState);
+    saveState();
+    activeAdminDashboardView = "ward-approval";
+    render();
+  } catch (error) {
+    console.warn("Access status update failed.", error);
+    window.alert(error?.message || "Access could not be updated right now.");
   }
 }
 
@@ -1765,8 +2324,87 @@ function buildGoalEditorOverlay(sessionUser) {
   return overlay;
 }
 
+function buildGoalPriorityBoard(sessionUser, goals) {
+  const board = document.createElement("section");
+  board.className = "goal-priority-board";
+  board.innerHTML = `
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Priority Board</p>
+        <h3>Arrange your goals</h3>
+        <p class="subgoal-meta">Drag a goal tile above or below another tile to choose what matters most right now.</p>
+      </div>
+    </div>
+  `;
+
+  const tileList = document.createElement("div");
+  tileList.className = "goal-priority-list";
+
+  if (!goals.length) {
+    const empty = document.createElement("section");
+    empty.className = "form-card goal-list-empty";
+    empty.innerHTML = "<h3>No goals yet</h3><p>Create a goal first, then return here to arrange your priorities.</p>";
+    board.appendChild(empty);
+    return board;
+  }
+
+  let draggedGoalId = null;
+  goals.forEach((goal, index) => {
+    const progress = getGoalProgress(goal);
+    const tile = document.createElement("article");
+    tile.className = "goal-priority-tile";
+    tile.draggable = true;
+    tile.dataset.goalId = goal.id;
+    tile.innerHTML = `
+      <span class="goal-priority-rank">${index + 1}</span>
+      <div>
+        <h4>${goal.title}</h4>
+        <p class="subgoal-meta">${progress}% complete &middot; ${normalizePointValue(goal.points)} pts &middot; ${getGoalStatus(goal).label}</p>
+      </div>
+      <span class="goal-priority-handle" aria-hidden="true">Drag</span>
+    `;
+
+    tile.addEventListener("dragstart", (event) => {
+      draggedGoalId = goal.id;
+      tile.classList.add("is-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", goal.id);
+    });
+    tile.addEventListener("dragend", () => {
+      draggedGoalId = null;
+      tile.classList.remove("is-dragging", "drop-before", "drop-after");
+      tileList.querySelectorAll(".goal-priority-tile").forEach((item) => item.classList.remove("drop-before", "drop-after"));
+    });
+    tile.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      if (!draggedGoalId || draggedGoalId === goal.id) {
+        return;
+      }
+
+      const rect = tile.getBoundingClientRect();
+      const placement = event.clientY > rect.top + rect.height / 2 ? "after" : "before";
+      tile.dataset.dropPlacement = placement;
+      tile.classList.toggle("drop-before", placement === "before");
+      tile.classList.toggle("drop-after", placement === "after");
+    });
+    tile.addEventListener("dragleave", () => {
+      tile.classList.remove("drop-before", "drop-after");
+    });
+    tile.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const droppedGoalId = event.dataTransfer.getData("text/plain") || draggedGoalId;
+      reorderYouthGoal(sessionUser.id, droppedGoalId, goal.id, tile.dataset.dropPlacement || "before");
+    });
+
+    tileList.appendChild(tile);
+  });
+
+  board.appendChild(tileList);
+  return board;
+}
+
 function renderUserDashboard(sessionUser) {
-  const goals = state.goals.filter((goal) => goal.userId === sessionUser.id);
+  const goals = getOrderedYouthGoals(sessionUser.id);
   elements.dashboardTitle.textContent = `${sessionUser.name}'s goals`;
   elements.userDashboard.innerHTML = "";
 
@@ -1774,6 +2412,7 @@ function renderUserDashboard(sessionUser) {
   dashboardSwitch.className = "tab-row user-dashboard-switch";
   dashboardSwitch.innerHTML = `
     <button class="tab-button${activeYouthDashboardView === "goals" ? " active" : ""}" type="button" data-youth-view="goals">Existing Goals</button>
+    <button class="tab-button${activeYouthDashboardView === "prioritize" ? " active" : ""}" type="button" data-youth-view="prioritize">Prioritize Goals</button>
     <button class="tab-button${activeYouthDashboardView === "create" ? " active" : ""}" type="button" data-youth-view="create">Create Goal</button>
   `;
   dashboardSwitch.querySelectorAll("[data-youth-view]").forEach((button) => {
@@ -1842,9 +2481,462 @@ function renderUserDashboard(sessionUser) {
 
   if (activeYouthDashboardView === "create") {
     elements.userDashboard.appendChild(formCard);
+  } else if (activeYouthDashboardView === "prioritize") {
+    elements.userDashboard.appendChild(buildGoalPriorityBoard(sessionUser, goals));
   } else {
     elements.userDashboard.appendChild(goalsWrap);
   }
+}
+
+function buildParentYouthCard(youth, relationship) {
+  const youthGoals = getOrderedYouthGoals(youth.id);
+  const card = document.createElement("section");
+  card.className = "form-card parent-child-card";
+  card.innerHTML = `
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">${escapeHtml(relationship || "Child")}</p>
+        <h3>${escapeHtml(youth.name)}</h3>
+        <p class="subgoal-meta">${getOrganizationLabel(youth.organization)}</p>
+      </div>
+      <div class="session-badge">${youthGoals.length} goals</div>
+    </div>
+    <div class="goal-list"></div>
+  `;
+
+  const goalList = card.querySelector(".goal-list");
+  if (youthGoals.length) {
+    youthGoals.forEach((goal) => {
+      goalList.appendChild(buildGoalCard(goal, "parent"));
+    });
+  } else {
+    goalList.innerHTML = `<p class="subgoal-meta">No goals assigned yet.</p>`;
+  }
+  return card;
+}
+
+function renderParentDashboard(sessionUser) {
+  const linkedYouth = getLinkedYouthForParent(sessionUser.id);
+  elements.dashboardTitle.textContent = `${sessionUser.name}'s family dashboard`;
+  elements.userDashboard.innerHTML = "";
+
+  const summary = document.createElement("section");
+  summary.className = "leader-summary";
+  summary.innerHTML = `
+    <strong>${linkedYouth.length}</strong> linked youth
+    <br>
+    Parents can review goal progress and deadlines for their linked children.
+  `;
+  elements.userDashboard.appendChild(summary);
+
+  if (!linkedYouth.length) {
+    const empty = document.createElement("section");
+    empty.className = "form-card goal-list-empty";
+    empty.innerHTML = `
+      <h3>No youth linked yet</h3>
+      <p class="subgoal-meta">A bishop or Youth leader can link your parent profile to your youth from the youth account editor.</p>
+    `;
+    elements.userDashboard.appendChild(empty);
+    return;
+  }
+
+  const wrap = document.createElement("div");
+  wrap.className = "parent-child-grid";
+  linkedYouth.forEach(({ youth, link }) => {
+    wrap.appendChild(buildParentYouthCard(youth, link.relationship));
+  });
+  elements.userDashboard.appendChild(wrap);
+}
+
+function getWardOverviewRows() {
+  const wardKeys = new Map();
+  state.wards.forEach((ward) => {
+    const key = normalizeWardKey(ward.name);
+    if (key && !wardKeys.has(key)) {
+      wardKeys.set(key, ward.name);
+    }
+  });
+
+  state.users.forEach((user) => {
+    if (!user.ward || user.role === "administrator") {
+      return;
+    }
+
+    const key = normalizeWardKey(user.ward);
+    if (!key) {
+      return;
+    }
+
+    if (!wardKeys.has(key)) {
+      wardKeys.set(key, user.ward);
+    }
+  });
+
+  return Array.from(wardKeys.entries())
+    .map(([wardKey, wardName]) => {
+      const usersInWard = state.users.filter((user) => user.role !== "administrator" && normalizeWardKey(user.ward) === wardKey);
+      const youth = usersInWard.filter((user) => user.role === "youth");
+      const youthIds = new Set(youth.map((user) => user.id));
+      const leaders = usersInWard.filter((user) => user.role === "youth_leader");
+      const bishops = usersInWard.filter((user) => user.role === "bishop");
+      const parents = usersInWard.filter((user) => user.role === "parent");
+      const goals = state.goals.filter((goal) => youthIds.has(goal.userId));
+
+      return {
+        wardKey,
+        wardName,
+        bishops,
+        leaders,
+        parents,
+        youth,
+        goals
+      };
+    })
+    .sort((left, right) => left.wardName.localeCompare(right.wardName));
+}
+
+function findWardByName(wardName) {
+  return state.wards.find((ward) => isSameWard(ward.name, wardName)) || null;
+}
+
+function getBishopOptions() {
+  return state.users
+    .filter((user) => user.role === "bishop")
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+async function createAdminWard(event) {
+  event.preventDefault();
+  const sessionUser = getSessionUser();
+  if (!isGlobalAdmin(sessionUser)) {
+    return;
+  }
+
+  const form = event.currentTarget;
+  const wardName = form.elements.wardName.value.trim();
+  if (!wardName) {
+    window.alert("Please enter a ward name.");
+    return;
+  }
+
+  if (findWardByName(wardName)) {
+    window.alert("That ward already exists.");
+    return;
+  }
+
+  const ward = {
+    id: createId("ward"),
+    name: wardName
+  };
+
+  try {
+    const nextState = await backendClient.createWard(STORAGE_KEY, state, {
+      ward,
+      createdBy: sessionUser.id,
+      fallbackState: getFallbackState()
+    });
+    state = normalizeState(nextState);
+    saveState();
+    activeAdminDashboardView = "ward-management";
+    form.reset();
+    render();
+  } catch (error) {
+    console.warn("Ward creation failed.", error);
+    window.alert(error?.message || "The ward could not be created right now.");
+  }
+}
+
+async function createAdminBishop(event) {
+  event.preventDefault();
+  const sessionUser = getSessionUser();
+  if (!isGlobalAdmin(sessionUser)) {
+    return;
+  }
+
+  const form = event.currentTarget;
+  const name = form.elements.bishopName.value.trim();
+  const email = form.elements.bishopEmail.value.trim().toLowerCase();
+  const wardName = form.elements.bishopWard.value;
+  const password = form.elements.bishopPassword.value;
+
+  if (!name || !email || !wardName || !password) {
+    window.alert("Please complete bishop name, email, ward, and password.");
+    return;
+  }
+
+  if (state.users.some((user) => String(user.email || "").toLowerCase() === email)) {
+    window.alert("That email already has an account.");
+    return;
+  }
+
+  const bishop = {
+    id: createId("bishop"),
+    role: "bishop",
+    name,
+    email,
+    password,
+    ward: wardName,
+    organization: "all",
+    approvalStatus: "verified"
+  };
+
+  try {
+    const nextState = await backendClient.createBishopAccount(STORAGE_KEY, state, {
+      user: bishop,
+      password,
+      createdBy: sessionUser.id,
+      fallbackState: getFallbackState()
+    });
+    state = normalizeState(nextState);
+    saveState();
+    activeAdminDashboardView = "ward-management";
+    form.reset();
+    render();
+  } catch (error) {
+    console.warn("Bishop creation failed.", error);
+    window.alert(error?.message || "The bishop profile could not be created right now.");
+  }
+}
+
+async function assignAdminBishopWard(event) {
+  event.preventDefault();
+  const sessionUser = getSessionUser();
+  if (!isGlobalAdmin(sessionUser)) {
+    return;
+  }
+
+  const form = event.currentTarget;
+  const bishopId = form.elements.assignBishopId.value;
+  const wardName = form.elements.assignWardName.value;
+  const bishop = state.users.find((user) => user.id === bishopId && user.role === "bishop");
+
+  if (!bishop || !wardName) {
+    window.alert("Please choose a bishop and ward.");
+    return;
+  }
+
+  const updatedBishop = {
+    ...bishop,
+    ward: wardName
+  };
+
+  try {
+    const nextState = await backendClient.assignBishopWard(STORAGE_KEY, state, {
+      user: updatedBishop,
+      wardName,
+      updatedBy: sessionUser.id,
+      fallbackState: getFallbackState()
+    });
+    state = normalizeState(nextState);
+    saveState();
+    activeAdminDashboardView = "ward-management";
+    form.reset();
+    render();
+  } catch (error) {
+    console.warn("Bishop ward assignment failed.", error);
+    window.alert(error?.message || "The bishop ward assignment could not be saved right now.");
+  }
+}
+
+function formatAdminNameList(users, emptyText = "None assigned") {
+  if (!users.length) {
+    return `<span class="subgoal-meta">${emptyText}</span>`;
+  }
+
+  return users
+    .map((user) => {
+      const status = user.role === "youth_leader" ? ` (${user.approvalStatus || "verified"})` : "";
+      return `<span class="admin-person-line">${escapeHtml(user.name)}${status}</span>`;
+    })
+    .join("");
+}
+
+function buildAdministratorDashboardNav() {
+  const nav = document.createElement("div");
+  nav.className = "admin-dashboard-nav";
+  const buttons = [
+    ["overview", "Overview", "All wards and leader access"],
+    ["ward-management", "Ward Management", "Create wards and assign bishops"]
+  ];
+
+  nav.innerHTML = buttons.map(([view, label, meta]) => `
+    <button class="admin-nav-button${activeAdminDashboardView === view ? " active" : ""}" type="button" data-admin-view="${view}">
+      <strong>${label}</strong>
+      <span>${meta}</span>
+    </button>
+  `).join("");
+  nav.querySelectorAll("[data-admin-view]").forEach((button) => {
+    button.addEventListener("click", () => setActiveAdminDashboardView(button.dataset.adminView));
+  });
+  return nav;
+}
+
+function buildWardManagementView() {
+  const section = document.createElement("section");
+  section.className = "admin-overview-section";
+  const wardOptions = state.wards
+    .slice()
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .map((ward) => `<option value="${escapeHtml(ward.name)}">${escapeHtml(ward.name)}</option>`)
+    .join("");
+  const bishopOptions = getBishopOptions()
+    .map((bishop) => `<option value="${bishop.id}">${escapeHtml(bishop.name)} (${escapeHtml(bishop.ward || "No ward")})</option>`)
+    .join("");
+  const wardRows = getWardOverviewRows();
+
+  section.innerHTML = `
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Administrator</p>
+        <h3>Ward management</h3>
+      </div>
+      <div class="session-badge">${state.wards.length} wards</div>
+    </div>
+    <div class="admin-management-grid">
+      <form class="form-card inline-form" id="createAdminWardForm">
+        <h3>Create ward</h3>
+        <label>Ward name
+          <input name="wardName" type="text" placeholder="Cedar Ridge Ward" required>
+        </label>
+        <button type="submit">Create Ward</button>
+      </form>
+      <form class="form-card inline-form" id="createAdminBishopForm">
+        <h3>Create bishop profile</h3>
+        <label>Bishop name
+          <input name="bishopName" type="text" placeholder="Bishop Anderson" required>
+        </label>
+        <label>Email
+          <input name="bishopEmail" type="email" placeholder="bishop@example.com" required>
+        </label>
+        <label>Password
+          <input name="bishopPassword" type="password" required>
+        </label>
+        <label>Assigned ward
+          <select name="bishopWard" required>${wardOptions}</select>
+        </label>
+        <button type="submit"${wardOptions ? "" : " disabled"}>Create Bishop</button>
+      </form>
+      <form class="form-card inline-form" id="assignAdminBishopWardForm">
+        <h3>Assign bishop to ward</h3>
+        <label>Bishop
+          <select name="assignBishopId" required>${bishopOptions}</select>
+        </label>
+        <label>Ward
+          <select name="assignWardName" required>${wardOptions}</select>
+        </label>
+        <button type="submit"${bishopOptions && wardOptions ? "" : " disabled"}>Assign Bishop</button>
+      </form>
+    </div>
+    <div class="admin-ward-list">
+      ${wardRows.map((ward) => `
+        <section class="form-card admin-ward-card">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Ward</p>
+              <h3>${escapeHtml(ward.wardName)}</h3>
+            </div>
+            <div class="session-badge">${ward.bishops.length} bishops</div>
+          </div>
+          <div class="admin-ward-grid">
+            <div>
+              <h4>Bishops</h4>
+              ${formatAdminNameList(ward.bishops)}
+            </div>
+            <div>
+              <h4>Assigned people</h4>
+              <span class="admin-person-line">${ward.leaders.length} Youth leaders</span>
+              <span class="admin-person-line">${ward.parents.length} parents</span>
+              <span class="admin-person-line">${ward.youth.length} youth</span>
+            </div>
+          </div>
+        </section>
+      `).join("") || "<section class=\"form-card goal-list-empty\"><h3>No wards yet</h3><p class=\"subgoal-meta\">Create the first ward to begin assigning bishops.</p></section>"}
+    </div>
+  `;
+
+  section.querySelector("#createAdminWardForm")?.addEventListener("submit", createAdminWard);
+  section.querySelector("#createAdminBishopForm")?.addEventListener("submit", createAdminBishop);
+  section.querySelector("#assignAdminBishopWardForm")?.addEventListener("submit", assignAdminBishopWard);
+  return section;
+}
+
+function renderAdministratorDashboard(sessionUser) {
+  const wardRows = getWardOverviewRows();
+  const bishops = state.users.filter((user) => user.role === "bishop");
+  const leaders = state.users.filter((user) => user.role === "youth_leader");
+  const parents = state.users.filter((user) => user.role === "parent");
+  const youth = state.users.filter((user) => user.role === "youth");
+  const pendingLeaders = leaders.filter((user) => user.approvalStatus !== "approved");
+
+  elements.dashboardTitle.textContent = `${sessionUser.name}'s administrator overview`;
+  elements.leaderDashboard.innerHTML = "";
+  elements.leaderDashboard.appendChild(buildAdministratorDashboardNav());
+
+  if (activeAdminDashboardView === "ward-management") {
+    elements.leaderDashboard.appendChild(buildWardManagementView());
+    return;
+  }
+
+  const summary = document.createElement("section");
+  summary.className = "admin-overview-summary";
+  summary.innerHTML = `
+    <article class="leader-summary"><strong>${wardRows.length}</strong><br>wards</article>
+    <article class="leader-summary"><strong>${bishops.length}</strong><br>bishops</article>
+    <article class="leader-summary"><strong>${leaders.length}</strong><br>Youth leaders</article>
+    <article class="leader-summary"><strong>${pendingLeaders.length}</strong><br>leaders pending or disabled</article>
+    <article class="leader-summary"><strong>${parents.length}</strong><br>parents</article>
+    <article class="leader-summary"><strong>${youth.length}</strong><br>youth</article>
+  `;
+  elements.leaderDashboard.appendChild(summary);
+
+  const wardList = document.createElement("div");
+  wardList.className = "admin-ward-list";
+
+  if (!wardRows.length) {
+    const empty = document.createElement("section");
+    empty.className = "form-card goal-list-empty";
+    empty.innerHTML = "<h3>No wards yet</h3><p class=\"subgoal-meta\">Wards will appear here after bishops, Youth leaders, parents, or youth are created.</p>";
+    elements.leaderDashboard.appendChild(empty);
+    return;
+  }
+
+  wardRows.forEach((ward) => {
+    const approvedLeaders = ward.leaders.filter((leader) => leader.approvalStatus === "approved");
+    const pendingWardLeaders = ward.leaders.filter((leader) => leader.approvalStatus !== "approved");
+    const card = document.createElement("section");
+    card.className = "form-card admin-ward-card";
+    card.innerHTML = `
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Ward</p>
+          <h3>${escapeHtml(ward.wardName)}</h3>
+        </div>
+        <div class="session-badge">${ward.youth.length} youth</div>
+      </div>
+      <div class="admin-ward-grid">
+        <div>
+          <h4>Bishops</h4>
+          ${formatAdminNameList(ward.bishops)}
+        </div>
+        <div>
+          <h4>Approved Youth Leaders</h4>
+          ${formatAdminNameList(approvedLeaders)}
+        </div>
+        <div>
+          <h4>Pending / Disabled Leaders</h4>
+          ${formatAdminNameList(pendingWardLeaders)}
+        </div>
+        <div>
+          <h4>Counts</h4>
+          <span class="admin-person-line">${ward.parents.length} parents</span>
+          <span class="admin-person-line">${ward.goals.length} goals</span>
+        </div>
+      </div>
+    `;
+    wardList.appendChild(card);
+  });
+
+  elements.leaderDashboard.appendChild(wardList);
 }
 
 function buildTemplateWorkspace(template) {
@@ -1947,40 +3039,138 @@ function buildTemplateWorkspace(template) {
   return card;
 }
 
-function renderLeaderDashboard(sessionUser) {
-  const goals = state.goals
-    .filter((goal) => {
-      const owner = state.users.find((user) => user.id === goal.userId);
-      return owner && canManageYouth(sessionUser, owner);
-    })
-    .sort((a, b) => getGoalProgress(b) - getGoalProgress(a));
+function buildAdminDashboardNav(sessionUser, counts = {}) {
+  const nav = document.createElement("div");
+  nav.className = "admin-dashboard-nav";
+  const buttons = [
+    ["overview", "Overview", "Youth progress cards"],
+    ["create-goal", "Create Goal For Youth", "Assign a new goal"],
+    ["create-youth", "Create Youth Account", "Add a youth"],
+    ["create-template", "Create Goal Template", "Start a reusable goal"],
+    ["templates", "Template Editor", "Edit and assign templates"],
+    ["goals", "Review Goals", `${counts.readyCount || 0} ready, ${counts.pendingPlanCount || 0} plans`]
+  ];
+
+  if (sessionUser.role === "bishop") {
+    buttons.push(["ward-approval", "Ward Approval", `${counts.pendingLeaderCount || 0} leaders waiting`]);
+  }
+
+  nav.innerHTML = buttons.map(([view, label, meta]) => `
+    <button class="admin-nav-button${activeAdminDashboardView === view ? " active" : ""}" type="button" data-admin-view="${view}">
+      <strong>${label}</strong>
+      <span>${meta}</span>
+    </button>
+  `).join("");
+  nav.querySelectorAll("[data-admin-view]").forEach((button) => {
+    button.addEventListener("click", () => setActiveAdminDashboardView(button.dataset.adminView));
+  });
+  return nav;
+}
+
+function buildManagedYouthOverview(sessionUser, managedYouth) {
+  const section = document.createElement("section");
+  section.className = "admin-overview-section";
+  const title = sessionUser.role === "bishop" ? "Youth in this ward" : "Youth you serve";
+
+  section.innerHTML = `
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Dashboard</p>
+        <h3>${title}</h3>
+      </div>
+      <div class="session-badge">${managedYouth.length}</div>
+    </div>
+    <div class="managed-youth-grid"></div>
+  `;
+
+  const grid = section.querySelector(".managed-youth-grid");
+  if (!managedYouth.length) {
+    grid.innerHTML = `<div class="empty-state">No youth accounts are available yet.</div>`;
+    return section;
+  }
+
+  managedYouth.forEach((youth) => {
+    const youthGoals = getOrderedYouthGoals(youth.id);
+    const parentLinks = getParentsForYouth(youth.id);
+    const parentSummary = parentLinks.length
+      ? parentLinks.map(({ parent }) => parent.name).join(", ")
+      : "No parents linked";
+    const loginLabel = youth.loginStatus === "not_invited"
+      ? "Login not set up"
+      : youth.loginStatus === "invitation_ready"
+        ? "Email ready"
+        : "Login ready";
+    const card = document.createElement("article");
+    card.className = "managed-youth-card";
+    card.innerHTML = `
+      <div class="managed-youth-card-header">
+        <div>
+          <h4>${escapeHtml(youth.name)}</h4>
+          <p class="subgoal-meta">${getOrganizationLabel(youth.organization)} · ${loginLabel}</p>
+          <p class="subgoal-meta">Parents: ${escapeHtml(parentSummary)}</p>
+        </div>
+        <div class="session-badge">${youthGoals.length} goals</div>
+      </div>
+      <button class="secondary-button compact-card-button" type="button" data-edit-youth-id="${youth.id}">Edit Youth Account</button>
+      <div class="youth-goal-progress-list">
+        ${youthGoals.length ? youthGoals.map((goal, index) => {
+          const progress = getGoalProgress(goal);
+          const status = getGoalStatus(goal);
+          return `
+            <div class="youth-goal-progress-row">
+              <div class="youth-goal-progress-copy">
+                <strong><span class="goal-number-chip">${index + 1}</span>${goal.title}</strong>
+                <span class="subgoal-meta">${status.label}</span>
+              </div>
+              <div class="mini-progress-wrap" aria-label="${progress}% complete">
+                <div class="mini-progress-bar"><div class="mini-progress-fill" style="width:${progress}%"></div></div>
+                <span>${progress}%</span>
+              </div>
+            </div>
+          `;
+        }).join("") : `<p class="subgoal-meta">No goals assigned yet.</p>`}
+      </div>
+    `;
+    card.querySelector("[data-edit-youth-id]").addEventListener("click", () => openYouthAccountEditor(youth.id));
+    grid.appendChild(card);
+  });
+
+  return section;
+}
+
+function buildAdminSummaryCards(sessionUser, goals, managedYouth, approvedLeaders = [], pendingLeaders = []) {
   const approvedCount = goals.filter((goal) => goal.leaderApproved).length;
   const readyCount = goals.filter((goal) => goal.goalApproved && getGoalProgress(goal) === 100 && !goal.leaderApproved).length;
   const pendingPlanCount = goals.filter((goal) => !goal.goalApproved).length;
-  const managedYouth = getManagedYouth(sessionUser);
-  const youthOptions = managedYouth.map((user) => `<option value="${user.id}">${user.name} (${getOrganizationLabel(user.organization)})</option>`).join("");
-  const allowedOrganizations = getAllowedOrganizationsForManager(sessionUser);
-  const organizationOptions = allowedOrganizations
-    .map((organization) => `<option value="${organization}">${getOrganizationLabel(organization)}</option>`)
-    .join("");
-  const templateOptions = state.templates.map((template) => `<option value="${template.id}">${template.title}</option>`).join("");
-
-  elements.dashboardTitle.textContent = sessionUser.role === "bishop" ? `${sessionUser.name}'s ward board` : `${sessionUser.name}'s youth board`;
-  elements.leaderDashboard.innerHTML = "";
-
-  const summary = document.createElement("div");
-  summary.className = "leader-summary";
-  summary.innerHTML = `
-    <strong>${approvedCount}</strong> goals approved
-    <br>
-    <strong>${readyCount}</strong> goals waiting for Youth leader sign-off
-    <br>
-    <strong>${pendingPlanCount}</strong> goals waiting for goal approval
+  const wrap = document.createElement("div");
+  wrap.className = "admin-summary-grid";
+  const wardCard = sessionUser.role === "bishop"
+    ? `
+      <section class="leader-summary">
+        <strong>${managedYouth.length}</strong> youth in ${sessionUser.ward}
+        <br>
+        <strong>${approvedLeaders.length}</strong> approved Youth leaders
+        <br>
+        <strong>${pendingLeaders.length}</strong> Youth leaders waiting for bishop approval
+      </section>
+    `
+    : "";
+  wrap.innerHTML = `
+    ${wardCard}
+    <section class="leader-summary">
+      <strong>${approvedCount}</strong> goals approved
+      <br>
+      <strong>${readyCount}</strong> goals waiting for Youth leader sign-off
+      <br>
+      <strong>${pendingPlanCount}</strong> goals waiting for goal approval
+    </section>
   `;
-  elements.leaderDashboard.appendChild(summary);
+  return wrap;
+}
 
+function buildManagedGoalForm(youthOptions, templateOptions) {
   const managedGoalForm = document.createElement("section");
-  managedGoalForm.className = "form-card";
+  managedGoalForm.className = "form-card admin-workflow-card";
   managedGoalForm.innerHTML = `
     <h3>Create a goal for youth</h3>
     <form class="inline-form" id="createManagedGoalForm">
@@ -2044,10 +3234,12 @@ function renderLeaderDashboard(sessionUser) {
   });
   createManagedGoalForm.querySelector("#addManagedGoalChecklistItemButton").addEventListener("click", () => addDraftChecklistItem(createManagedGoalForm));
   renderDraftChecklistItems(createManagedGoalForm);
-  elements.leaderDashboard.appendChild(managedGoalForm);
+  return managedGoalForm;
+}
 
+function buildYouthAccountForm(organizationOptions) {
   const youthAccountForm = document.createElement("section");
-  youthAccountForm.className = "form-card";
+  youthAccountForm.className = "form-card admin-workflow-card";
   youthAccountForm.innerHTML = `
     <h3>Create a youth account</h3>
     <form class="inline-form" id="createYouthAccountForm">
@@ -2056,8 +3248,8 @@ function renderLeaderDashboard(sessionUser) {
         <input name="youthName" type="text" placeholder="Enter youth full name" required>
       </label>
       <label>
-        <span>Youth email</span>
-        <input name="youthEmail" type="email" placeholder="Enter youth email" required>
+        <span>Youth email optional</span>
+        <input name="youthEmail" type="email" placeholder="Add later if needed">
       </label>
       <label>
         <span>Organization</span>
@@ -2066,17 +3258,127 @@ function renderLeaderDashboard(sessionUser) {
         </select>
       </label>
       <label>
-        <span>Temporary password</span>
-        <input name="youthPassword" type="password" placeholder="Create a password" required>
+        <span>Temporary password optional</span>
+        <input name="youthPassword" type="password" placeholder="Only needed if creating login now">
       </label>
+      <p class="subgoal-meta">Youth profiles can be created without login credentials. Add an email later when you are ready to invite them.</p>
       <button class="primary-button" type="submit">Create Youth Account</button>
     </form>
   `;
   youthAccountForm.querySelector("#createYouthAccountForm").addEventListener("submit", createYouthAccount);
-  elements.leaderDashboard.appendChild(youthAccountForm);
+  return youthAccountForm;
+}
 
+function buildYouthAccountEditor(youth, organizationOptions) {
+  const editor = document.createElement("section");
+  editor.className = "form-card admin-workflow-card";
+
+  if (!youth) {
+    editor.innerHTML = `
+      <h3>Edit youth account</h3>
+      <p class="leader-summary">Choose a youth from the overview to edit their account.</p>
+      <button class="secondary-button" type="button" data-action="back-overview">Back To Overview</button>
+    `;
+    editor.querySelector("[data-action='back-overview']").addEventListener("click", () => setActiveAdminDashboardView("overview"));
+    return editor;
+  }
+
+  const loginLabel = youth.loginStatus === "not_invited"
+    ? "Login not set up"
+    : youth.loginStatus === "invitation_ready"
+      ? "Email ready"
+      : "Login ready";
+  const linkedParents = getParentsForYouth(youth.id);
+
+  editor.innerHTML = `
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Youth Account</p>
+        <h3>Edit ${escapeHtml(youth.name)}</h3>
+      </div>
+      <div class="session-badge">${loginLabel}</div>
+    </div>
+    <form class="inline-form" id="editYouthAccountForm">
+      <input name="youthId" type="hidden" value="${escapeHtml(youth.id)}">
+      <label>
+        <span>Youth full name</span>
+        <input name="youthName" type="text" value="${escapeHtml(youth.name)}" required>
+      </label>
+      <label>
+        <span>Youth email optional</span>
+        <input name="youthEmail" type="email" value="${escapeHtml(youth.email)}" placeholder="Add later if needed">
+      </label>
+      <label>
+        <span>Organization</span>
+        <select name="youthOrganization">
+          ${organizationOptions}
+        </select>
+      </label>
+      <p class="subgoal-meta">Adding an email marks this youth as ready for a future login invite. Sending the invite comes in the next buildout.</p>
+      <div class="admin-action-row">
+        <button class="secondary-button" type="button" data-action="back-overview">Back To Overview</button>
+        <button class="primary-button" type="submit">Save Youth Account</button>
+      </div>
+    </form>
+    <div class="parent-link-panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Parents</p>
+          <h3>Linked Parents</h3>
+        </div>
+        <div class="session-badge">${linkedParents.length}</div>
+      </div>
+      <div class="parent-link-list">
+        ${linkedParents.length ? linkedParents.map(({ parent, link }) => `
+          <div class="parent-link-row">
+            <div>
+              <strong>${escapeHtml(parent.name)}</strong>
+              <span class="subgoal-meta">${escapeHtml(link.relationship)} - ${getParentLoginLabel(parent)}</span>
+              ${parent.email ? `<span class="subgoal-meta">${escapeHtml(parent.email)}</span>` : ""}
+            </div>
+            <button class="ghost-button" type="button" data-unlink-parent-id="${escapeHtml(parent.id)}">Unlink</button>
+          </div>
+        `).join("") : `<p class="subgoal-meta">No parents linked yet.</p>`}
+      </div>
+      <form class="inline-form parent-create-form" id="createParentForYouthForm">
+        <input name="youthId" type="hidden" value="${escapeHtml(youth.id)}">
+        <div class="draft-builder-grid">
+          <label>
+            <span>Parent name</span>
+            <input name="parentName" type="text" placeholder="Enter parent or guardian name" required>
+          </label>
+          <label>
+            <span>Relationship</span>
+            <input name="parentRelationship" type="text" placeholder="Parent" value="Parent">
+          </label>
+        </div>
+        <label>
+          <span>Parent email optional</span>
+          <input name="parentEmail" type="email" placeholder="Add later if needed">
+        </label>
+        <label>
+          <span>Temporary password optional</span>
+          <input name="parentPassword" type="password" placeholder="Only needed if creating login now">
+        </label>
+        <button class="secondary-button" type="submit">Add Parent To Youth</button>
+      </form>
+    </div>
+  `;
+
+  const form = editor.querySelector("#editYouthAccountForm");
+  form.elements.youthOrganization.value = youth.organization;
+  form.addEventListener("submit", updateYouthAccount);
+  editor.querySelector("[data-action='back-overview']").addEventListener("click", () => setActiveAdminDashboardView("overview"));
+  editor.querySelector("#createParentForYouthForm").addEventListener("submit", createParentForYouth);
+  editor.querySelectorAll("[data-unlink-parent-id]").forEach((button) => {
+    button.addEventListener("click", () => unlinkParentFromYouth(button.dataset.unlinkParentId, youth.id));
+  });
+  return editor;
+}
+
+function buildCreateTemplateForm() {
   const templateForm = document.createElement("section");
-  templateForm.className = "form-card";
+  templateForm.className = "form-card admin-workflow-card";
   templateForm.innerHTML = `
     <h3>Create a goal template</h3>
     <form class="inline-form" id="createTemplateForm">
@@ -2115,13 +3417,156 @@ function renderLeaderDashboard(sessionUser) {
   createTemplateForm.addEventListener("submit", createTemplate);
   createTemplateForm.querySelector("#addTemplateChecklistItemButton").addEventListener("click", () => addDraftChecklistItem(createTemplateForm));
   renderDraftChecklistItems(createTemplateForm);
-  elements.leaderDashboard.appendChild(templateForm);
+  return templateForm;
+}
 
+function buildTemplateEditorView() {
   const activeTemplate = getActiveTemplate();
   const templatesWrap = document.createElement("div");
   templatesWrap.className = "template-grid";
   templatesWrap.appendChild(buildTemplateWorkspace(activeTemplate));
-  elements.leaderDashboard.appendChild(templatesWrap);
+  return templatesWrap;
+}
+
+function buildWardApprovalView(sessionUser, pendingLeaders, accessUsers = []) {
+  const fragment = document.createDocumentFragment();
+  const info = document.createElement("section");
+  info.className = "form-card";
+  info.innerHTML = `
+    <h3>Ward approval</h3>
+    <p class="leader-summary">Ward is required for every account. Youth leaders and parents only gain access inside this ward while their access is enabled. Automatic Church website verification is not enabled in this browser-only version.</p>
+  `;
+  fragment.appendChild(info);
+
+  const accessPanel = document.createElement("section");
+  accessPanel.className = "form-card";
+  accessPanel.innerHTML = `
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Access Review</p>
+        <h3>Youth Leaders And Parents</h3>
+      </div>
+      <div class="session-badge">${accessUsers.length}</div>
+    </div>
+    <div class="access-review-list"></div>
+  `;
+  const accessList = accessPanel.querySelector(".access-review-list");
+
+  if (!accessUsers.length) {
+    accessList.innerHTML = `<div class="empty-state">No Youth leader or parent profiles are available in this ward yet.</div>`;
+    fragment.appendChild(accessPanel);
+    return fragment;
+  }
+
+  accessUsers.forEach((user) => {
+    const card = document.createElement("section");
+    card.className = "access-review-card";
+    const disabled = user.approvalStatus === "rejected";
+    const waiting = user.role === "youth_leader" && user.approvalStatus !== "approved" && !disabled;
+    const primaryAction = disabled
+      ? ["Enable Access", getEnabledStatusForRole(user.role), "primary-button"]
+      : waiting
+        ? ["Approve Access", "approved", "primary-button"]
+        : ["Disable Access", "rejected", "secondary-button"];
+    card.innerHTML = `
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">${user.role === "parent" ? "Parent" : "Youth Leader"}</p>
+          <h3>${escapeHtml(user.name)}</h3>
+          <p class="subgoal-meta">${escapeHtml(user.email || "No email set")}</p>
+        </div>
+        <div class="session-badge">${getAccessStatusLabel(user)}</div>
+      </div>
+      <div class="admin-action-row"></div>
+    `;
+    const actionRow = card.querySelector(".admin-action-row");
+    const primaryButton = document.createElement("button");
+    primaryButton.type = "button";
+    primaryButton.className = primaryAction[2];
+    primaryButton.textContent = primaryAction[0];
+    primaryButton.addEventListener("click", () => updateWardAccessStatus(user.id, primaryAction[1]));
+    actionRow.appendChild(primaryButton);
+
+    if (waiting) {
+      const disableButton = document.createElement("button");
+      disableButton.type = "button";
+      disableButton.className = "secondary-button";
+      disableButton.textContent = "Disable Access";
+      disableButton.addEventListener("click", () => updateWardAccessStatus(user.id, "rejected"));
+      actionRow.appendChild(disableButton);
+    }
+
+    accessList.appendChild(card);
+  });
+  fragment.appendChild(accessPanel);
+
+  return fragment;
+}
+
+function renderLeaderDashboard(sessionUser) {
+  const goals = state.goals
+    .filter((goal) => {
+      const owner = state.users.find((user) => user.id === goal.userId);
+      return owner && canManageYouth(sessionUser, owner);
+    })
+    .sort((a, b) => getGoalProgress(b) - getGoalProgress(a));
+  const approvedCount = goals.filter((goal) => goal.leaderApproved).length;
+  const readyCount = goals.filter((goal) => goal.goalApproved && getGoalProgress(goal) === 100 && !goal.leaderApproved).length;
+  const pendingPlanCount = goals.filter((goal) => !goal.goalApproved).length;
+  const managedYouth = getManagedYouth(sessionUser);
+  const pendingLeaders = sessionUser.role === "bishop" ? getPendingWardLeaders(sessionUser.ward) : [];
+  const accessUsers = sessionUser.role === "bishop" ? getWardAccessUsers(sessionUser.ward) : [];
+  const approvedLeaders = sessionUser.role === "bishop"
+    ? state.users.filter((user) => user.role === "youth_leader" && isSameWard(user.ward, sessionUser.ward) && user.approvalStatus === "approved")
+    : [];
+  const youthOptions = managedYouth.map((user) => `<option value="${user.id}">${user.name} (${getOrganizationLabel(user.organization)})</option>`).join("");
+  const allowedOrganizations = getAllowedOrganizationsForManager(sessionUser);
+  const organizationOptions = allowedOrganizations
+    .map((organization) => `<option value="${organization}">${getOrganizationLabel(organization)}</option>`)
+    .join("");
+  const templateOptions = state.templates.map((template) => `<option value="${template.id}">${template.title}</option>`).join("");
+
+  elements.dashboardTitle.textContent = sessionUser.role === "bishop" ? `${sessionUser.name}'s ward board` : `${sessionUser.name}'s youth board`;
+  elements.leaderDashboard.innerHTML = "";
+
+  elements.leaderDashboard.appendChild(buildAdminDashboardNav(sessionUser, { readyCount, pendingPlanCount, pendingLeaderCount: pendingLeaders.length }));
+
+  if (activeAdminDashboardView === "overview") {
+    elements.leaderDashboard.appendChild(buildAdminSummaryCards(sessionUser, goals, managedYouth, approvedLeaders, pendingLeaders));
+    elements.leaderDashboard.appendChild(buildManagedYouthOverview(sessionUser, managedYouth));
+    return;
+  }
+
+  if (activeAdminDashboardView === "create-goal") {
+    elements.leaderDashboard.appendChild(buildManagedGoalForm(youthOptions, templateOptions));
+    return;
+  }
+
+  if (activeAdminDashboardView === "create-youth") {
+    elements.leaderDashboard.appendChild(buildYouthAccountForm(organizationOptions));
+    return;
+  }
+
+  if (activeAdminDashboardView === "edit-youth") {
+    const editingYouth = managedYouth.find((user) => user.id === activeEditingYouthId) || null;
+    elements.leaderDashboard.appendChild(buildYouthAccountEditor(editingYouth, organizationOptions));
+    return;
+  }
+
+  if (activeAdminDashboardView === "create-template") {
+    elements.leaderDashboard.appendChild(buildCreateTemplateForm());
+    return;
+  }
+
+  if (activeAdminDashboardView === "templates") {
+    elements.leaderDashboard.appendChild(buildTemplateEditorView());
+    return;
+  }
+
+  if (activeAdminDashboardView === "ward-approval" && sessionUser.role === "bishop") {
+    elements.leaderDashboard.appendChild(buildWardApprovalView(sessionUser, pendingLeaders, accessUsers));
+    return;
+  }
 
   goals.forEach((goal) => {
     elements.leaderDashboard.appendChild(buildGoalCard(goal, "youth_leader"));
@@ -2130,47 +3575,6 @@ function renderLeaderDashboard(sessionUser) {
 
 function renderBishopDashboard(sessionUser) {
   renderLeaderDashboard(sessionUser);
-
-  const managedYouth = getManagedYouth(sessionUser);
-  const pendingLeaders = getPendingWardLeaders(sessionUser.ward);
-  const approvedLeaders = state.users.filter((user) => user.role === "youth_leader" && user.ward === sessionUser.ward && user.approvalStatus === "approved");
-
-  const summary = document.createElement("div");
-  summary.className = "leader-summary";
-  summary.innerHTML = `
-    <strong>${managedYouth.length}</strong> youth in ${sessionUser.ward}
-    <br>
-    <strong>${approvedLeaders.length}</strong> approved Youth leaders
-    <br>
-    <strong>${pendingLeaders.length}</strong> Youth leaders waiting for bishop approval
-  `;
-  elements.leaderDashboard.prepend(summary);
-
-  const info = document.createElement("section");
-  info.className = "form-card";
-  info.innerHTML = `
-    <h3>Ward approval</h3>
-    <p class="leader-summary">Ward is required for every account. Youth leaders only gain access to youth in the same ward after bishop approval. Automatic Church website verification is not enabled in this browser-only version.</p>
-  `;
-  elements.leaderDashboard.insertBefore(info, elements.leaderDashboard.children[1] || null);
-
-  pendingLeaders.forEach((leader) => {
-    const card = document.createElement("section");
-    card.className = "form-card";
-    card.innerHTML = `
-      <div class="panel-header">
-        <div>
-          <p class="eyebrow">Pending Youth Leader</p>
-          <h3>${leader.name}</h3>
-        </div>
-        <div class="session-badge">${leader.ward}</div>
-      </div>
-      <p class="leader-summary">${leader.email}</p>
-      <button class="primary-button" type="button">Approve Youth Leader</button>
-    `;
-    card.querySelector("button").addEventListener("click", () => approveYouthLeaderAccount(leader.id));
-    elements.leaderDashboard.insertBefore(card, elements.leaderDashboard.children[2 + pendingLeaders.indexOf(leader)] || null);
-  });
 }
 
 function render() {
@@ -2191,7 +3595,9 @@ function render() {
 
   elements.loginView.classList.toggle("hidden", loggedIn);
   elements.sessionView.classList.toggle("hidden", !loggedIn);
-  elements.logoutButton.classList.toggle("hidden", !loggedIn);
+  elements.accountMenu?.classList.toggle("hidden", !loggedIn);
+  elements.authPanel?.classList.toggle("hidden", loggedIn);
+  elements.appGrid?.classList.toggle("is-logged-in", loggedIn);
   elements.emptyState.classList.toggle("hidden", loggedIn);
   elements.userDashboard.classList.add("hidden");
   elements.leaderDashboard.classList.add("hidden");
@@ -2200,29 +3606,43 @@ function render() {
 
   if (!loggedIn) {
     elements.dashboardTitle.textContent = "Choose a login to get started";
+    closeAccountMenu();
     renderSessionProgressTracker(null);
     return;
   }
 
+  elements.accountMenuButton.textContent = getInitials(sessionUser.name);
   elements.sessionTitle.textContent = sessionUser.name;
   elements.sessionDescription.textContent = sessionUser.role === "bishop"
     ? "Approve Youth leaders in your ward and oversee ward access."
     : sessionUser.role === "youth_leader"
       ? "Create youth accounts, manage templates, and sign off completed goals for youth in your ward."
+      : sessionUser.role === "administrator"
+        ? "Review wards, bishops, Youth leaders, parents, and youth across the whole program."
+      : sessionUser.role === "parent"
+        ? "Review the goals, progress, and deadlines for your linked youth."
       : "Check off sub-goals as you finish them and the overall progress bar will update automatically.";
 
   elements.sessionBadge.textContent =
     sessionUser.role === "bishop" ? "Bishop Session" :
     sessionUser.role === "youth_leader" ? "Youth Leader Session" :
+    sessionUser.role === "administrator" ? "Admin Session" :
+    sessionUser.role === "parent" ? "Parent Session" :
     "Youth Session";
   renderSessionProgressTracker(sessionUser);
 
-  if (sessionUser.role === "bishop") {
+  if (sessionUser.role === "administrator") {
+    elements.leaderDashboard.classList.remove("hidden");
+    renderAdministratorDashboard(sessionUser);
+  } else if (sessionUser.role === "bishop") {
     elements.leaderDashboard.classList.remove("hidden");
     renderBishopDashboard(sessionUser);
   } else if (sessionUser.role === "youth_leader") {
     elements.leaderDashboard.classList.remove("hidden");
     renderLeaderDashboard(sessionUser);
+  } else if (sessionUser.role === "parent") {
+    elements.userDashboard.classList.remove("hidden");
+    renderParentDashboard(sessionUser);
   } else {
     elements.userDashboard.classList.remove("hidden");
     renderUserDashboard(sessionUser);
@@ -2244,13 +3664,16 @@ function render() {
 }
 
 elements.userTab.addEventListener("click", () => setActiveRole("youth"));
+elements.parentTab?.addEventListener("click", () => setActiveRole("parent"));
 elements.leaderTab.addEventListener("click", () => setActiveRole("youth_leader"));
 elements.bishopTab.addEventListener("click", () => setActiveRole("bishop"));
+elements.adminTab?.addEventListener("click", () => setActiveRole("administrator"));
 elements.signInModeButton.addEventListener("click", () => setUserAuthMode("signin"));
 elements.createAccountModeButton.addEventListener("click", () => setUserAuthMode("create"));
 elements.loginForm.addEventListener("submit", login);
 elements.registerForm.addEventListener("submit", registerUser);
 elements.logoutButton.addEventListener("click", logout);
+elements.accountMenuButton?.addEventListener("click", toggleAccountMenu);
 
 setActiveRole("youth");
 renderRuntimeBanner();

@@ -5,6 +5,7 @@ Thumbs.db
 # Local Supabase CLI state
 supabase/.temp/
 backend/supabase/.temp/
+.tools/
 
 # Local hosting runtime files
 hosting/site-server.pid

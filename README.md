@@ -85,9 +85,14 @@ After deployment:
 
 - Youth: `josh@example.com` / `goal123`
 - Youth: `maria@example.com` / `growth456`
+- Youth: `eli.roberts@example.com` / `pocatello1`
+- Youth: `sophie.martin@example.com` / `pocatello2`
+- Parent: `parent.carter@example.com` / `parent123`
 - Youth leader: `leader.one@example.com` / `approve789`
 - Youth leader: `leader.two@example.com` / `hearts456`
 - Bishop: `ward.bishop@example.com` / `steward123`
+- Bishop: `pocatello.bishop@example.com` / `steward456`
+- Admin: `admin@example.com` / `admin123`
 
 ## Notes
 

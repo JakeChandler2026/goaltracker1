@@ -30,6 +30,7 @@
       return {
         ...goal,
         points: normalizePointValue(snapshotGoal?.points ?? goal.points),
+        priorityOrder: Number(snapshotGoal?.priorityOrder ?? goal.priorityOrder ?? 0),
         goalApproved: Boolean(snapshotGoal?.goalApproved ?? goal.goalApproved),
         goalApprovedBy: snapshotGoal?.goalApprovedBy ?? goal.goalApprovedBy ?? null,
         goalApprovedAt: snapshotGoal?.goalApprovedAt ?? goal.goalApprovedAt ?? null,
@@ -57,6 +58,7 @@
       nextState.goals[goalIndex] = {
         ...nextState.goals[goalIndex],
         points: normalizePointValue(goal.points),
+        priorityOrder: Number(goal.priorityOrder || 0),
         goalApproved: Boolean(goal.goalApproved),
         goalApprovedBy: goal.goalApprovedBy || null,
         goalApprovedAt: goal.goalApprovedAt || null,
@@ -342,11 +344,61 @@
       nextState.users.push(payload.user);
       return nextState;
     },
+    async updateYouthAccount(storageKey, appState, payload) {
+      const nextState = clone(appState);
+      const userIndex = nextState.users.findIndex((user) => user.id === payload.user.id);
+      if (userIndex >= 0) {
+        nextState.users[userIndex] = payload.user;
+      }
+      return nextState;
+    },
+    async updateParentYouthLinks(storageKey, appState, payload) {
+      const nextState = clone(appState);
+      const parentIndex = nextState.users.findIndex((user) => user.id === payload.parent.id);
+      if (parentIndex >= 0) {
+        nextState.users[parentIndex] = payload.parent;
+      } else {
+        nextState.users.push(payload.parent);
+      }
+      nextState.parentYouthLinks = payload.parentYouthLinks || [];
+      return nextState;
+    },
     async approveYouthLeader(storageKey, appState, payload) {
       const nextState = clone(appState);
       const leader = nextState.users.find((user) => user.id === payload.leaderId);
       if (leader) {
         leader.approvalStatus = "approved";
+      }
+      return nextState;
+    },
+    async updateUserAccessStatus(storageKey, appState, payload) {
+      const nextState = clone(appState);
+      const user = nextState.users.find((item) => item.id === payload.userId);
+      if (user) {
+        user.approvalStatus = payload.approvalStatus;
+      }
+      return nextState;
+    },
+    async createWard(storageKey, appState, payload) {
+      const nextState = clone(appState);
+      nextState.wards = nextState.wards || [];
+      nextState.wards.push(payload.ward);
+      return nextState;
+    },
+    async createBishopAccount(storageKey, appState, payload) {
+      const nextState = clone(appState);
+      nextState.users.push(payload.user);
+      if (payload.user.ward && !(nextState.wards || []).some((ward) => ward.name === payload.user.ward)) {
+        nextState.wards = nextState.wards || [];
+        nextState.wards.push({ id: `ward-${Date.now()}`, name: payload.user.ward });
+      }
+      return nextState;
+    },
+    async assignBishopWard(storageKey, appState, payload) {
+      const nextState = clone(appState);
+      const userIndex = nextState.users.findIndex((user) => user.id === payload.user.id);
+      if (userIndex >= 0) {
+        nextState.users[userIndex] = payload.user;
       }
       return nextState;
     }
@@ -418,14 +470,16 @@
           goalsResult,
           goalChecklistItemsResult,
           goalChecklistUnitsResult,
+          parentYouthLinksResult,
           templatesResult,
           templateChecklistItemsResult
         ] = await Promise.all([
           client.from("wards").select("id, name"),
-          client.from("profiles").select("id, email, full_name, role, organization, approval_status, ward_id"),
+          client.from("profiles").select("id, auth_user_id, email, full_name, role, organization, approval_status, ward_id"),
           client.from("goals").select("*"),
           client.from("goal_checklist_items").select("id, goal_id, title, repeat_count, sort_order"),
           client.from("goal_checklist_units").select("checklist_item_id, unit_index, completed_at"),
+          client.from("parent_youth_links").select("parent_id, youth_id, relationship"),
           client.from("goal_templates").select("*"),
           client.from("template_checklist_items").select("id, template_id, title, repeat_count, sort_order")
         ]);
@@ -436,6 +490,7 @@
           goalsResult.error,
           goalChecklistItemsResult.error,
           goalChecklistUnitsResult.error,
+          parentYouthLinksResult.error,
           templatesResult.error,
           templateChecklistItemsResult.error
         ].find(Boolean);
@@ -449,6 +504,7 @@
         const goals = goalsResult.data || [];
         const goalChecklistItems = goalChecklistItemsResult.data || [];
         const goalChecklistUnits = goalChecklistUnitsResult.data || [];
+        const parentYouthLinks = parentYouthLinksResult.data || [];
         const templates = templatesResult.data || [];
         const templateChecklistItems = templateChecklistItemsResult.data || [];
 
@@ -463,8 +519,11 @@
             password: "",
             name: profile.full_name,
             ward: wardNamesById.get(profile.ward_id) || "",
-            organization: profile.role === "bishop" ? "all" : profile.organization,
-            approvalStatus: profile.approval_status
+            organization: profile.role === "bishop" || profile.role === "parent" || profile.role === "administrator" ? "all" : profile.organization,
+            approvalStatus: profile.approval_status,
+            loginStatus: (profile.role === "youth" || profile.role === "parent") && !profile.auth_user_id
+              ? (profile.email ? "invitation_ready" : "not_invited")
+              : "verified"
           })),
           goals: goals.map((goal) => ({
             id: goal.id,
@@ -472,6 +531,7 @@
             title: goal.title,
             summary: goal.summary,
             points: normalizePointValue(goal.points),
+            priorityOrder: Number(goal.priority_order || 0),
             goalApproved: Boolean(goal.goal_approved),
             goalApprovedBy: goal.goal_approved_by ? (profileNamesById.get(goal.goal_approved_by) || null) : null,
             goalApprovedAt: goal.goal_approved_at ? String(goal.goal_approved_at).slice(0, 10) : null,
@@ -487,6 +547,11 @@
             summary: template.summary,
             points: normalizePointValue(template.points),
             subGoals: buildTemplateSubGoals(templateChecklistItems, template.id)
+          })),
+          parentYouthLinks: parentYouthLinks.map((link) => ({
+            parentId: link.parent_id,
+            youthId: link.youth_id,
+            relationship: link.relationship || "Parent"
           })),
           session: null
         };
@@ -513,6 +578,7 @@
           title: payload.goal.title,
           summary: payload.goal.summary,
           points: normalizePointValue(payload.goal.points),
+          priority_order: Number(payload.goal.priorityOrder || 0),
           goal_approved: Boolean(payload.goal.goalApproved),
           goal_approved_by: goalApproverId,
           goal_approved_at: payload.goal.goalApprovedAt ? `${payload.goal.goalApprovedAt}T00:00:00.000Z` : null,
@@ -542,6 +608,7 @@
           title: payload.goal.title,
           summary: payload.goal.summary,
           points: normalizePointValue(payload.goal.points),
+          priority_order: Number(payload.goal.priorityOrder || 0),
           goal_approved: Boolean(payload.goal.goalApproved),
           goal_approved_by: goalApproverId,
           goal_approved_at: payload.goal.goalApprovedAt ? `${payload.goal.goalApprovedAt}T00:00:00.000Z` : null,
@@ -621,10 +688,69 @@
       });
       return reloadSupabaseAppState(storageKey, payload.fallbackState);
     },
+    async updateYouthAccount(storageKey, appState, payload) {
+      const client = createSupabaseClient();
+      await invokeAdminUserManagement(client, "update_managed_youth_profile", {
+        youthId: payload.user.id,
+        email: payload.user.email,
+        fullName: payload.user.name,
+        organization: payload.user.organization
+      });
+      return reloadSupabaseAppState(storageKey, payload.fallbackState);
+    },
+    async updateParentYouthLinks(storageKey, appState, payload) {
+      const client = createSupabaseClient();
+      await invokeAdminUserManagement(client, payload.unlink ? "unlink_youth_parent_link" : "upsert_youth_parent_link", {
+        youthId: payload.youthId,
+        parentId: payload.parent.id,
+        email: payload.parent.email,
+        password: payload.parent.password || "",
+        fullName: payload.parent.name,
+        relationship: payload.relationship || null
+      });
+      const nextState = await reloadSupabaseAppState(storageKey, payload.fallbackState);
+      return {
+        ...nextState,
+        parentYouthLinks: payload.parentYouthLinks || nextState.parentYouthLinks || []
+      };
+    },
     async approveYouthLeader(storageKey, appState, payload) {
       const client = createSupabaseClient();
       await invokeAdminUserManagement(client, "approve_youth_leader", {
         leaderId: payload.leaderId
+      });
+      return reloadSupabaseAppState(storageKey, payload.fallbackState);
+    },
+    async updateUserAccessStatus(storageKey, appState, payload) {
+      const client = createSupabaseClient();
+      await invokeAdminUserManagement(client, "update_profile_access_status", {
+        userId: payload.userId,
+        approvalStatus: payload.approvalStatus
+      });
+      return reloadSupabaseAppState(storageKey, payload.fallbackState);
+    },
+    async createWard(storageKey, appState, payload) {
+      const client = createSupabaseClient();
+      await invokeAdminUserManagement(client, "create_ward", {
+        ward: payload.ward.name
+      });
+      return reloadSupabaseAppState(storageKey, payload.fallbackState);
+    },
+    async createBishopAccount(storageKey, appState, payload) {
+      const client = createSupabaseClient();
+      await invokeAdminUserManagement(client, "create_bishop_account", {
+        email: payload.user.email,
+        password: payload.password,
+        fullName: payload.user.name,
+        ward: payload.user.ward
+      });
+      return reloadSupabaseAppState(storageKey, payload.fallbackState);
+    },
+    async assignBishopWard(storageKey, appState, payload) {
+      const client = createSupabaseClient();
+      await invokeAdminUserManagement(client, "assign_bishop_ward", {
+        userId: payload.user.id,
+        ward: payload.wardName
       });
       return reloadSupabaseAppState(storageKey, payload.fallbackState);
     }
@@ -655,8 +781,26 @@
     async createYouthAccount(storageKey, appState, payload) {
       return (activeProvider.createYouthAccount || localStorageProvider.createYouthAccount)(storageKey, appState, payload);
     },
+    async updateYouthAccount(storageKey, appState, payload) {
+      return (activeProvider.updateYouthAccount || localStorageProvider.updateYouthAccount)(storageKey, appState, payload);
+    },
+    async updateParentYouthLinks(storageKey, appState, payload) {
+      return (activeProvider.updateParentYouthLinks || localStorageProvider.updateParentYouthLinks)(storageKey, appState, payload);
+    },
     async approveYouthLeader(storageKey, appState, payload) {
       return (activeProvider.approveYouthLeader || localStorageProvider.approveYouthLeader)(storageKey, appState, payload);
+    },
+    async updateUserAccessStatus(storageKey, appState, payload) {
+      return (activeProvider.updateUserAccessStatus || localStorageProvider.updateUserAccessStatus)(storageKey, appState, payload);
+    },
+    async createWard(storageKey, appState, payload) {
+      return (activeProvider.createWard || localStorageProvider.createWard)(storageKey, appState, payload);
+    },
+    async createBishopAccount(storageKey, appState, payload) {
+      return (activeProvider.createBishopAccount || localStorageProvider.createBishopAccount)(storageKey, appState, payload);
+    },
+    async assignBishopWard(storageKey, appState, payload) {
+      return (activeProvider.assignBishopWard || localStorageProvider.assignBishopWard)(storageKey, appState, payload);
     }
   };
 })(window);

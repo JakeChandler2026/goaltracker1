@@ -14,7 +14,7 @@
   }
 
   function isSelfSignupRoleAllowed(role) {
-    return role === "youth" || role === "youth_leader" || role === "bishop";
+    return role === "youth" || role === "youth_leader" || role === "bishop" || role === "parent";
   }
 
   async function ensureWardRecord(client, wardName) {
@@ -34,7 +34,7 @@
   async function fetchProfileByEmail(client, email) {
     const result = await client
       .from("profiles")
-      .select("id, email, full_name, role, organization, approval_status, ward:wards(name)")
+      .select("id, auth_user_id, email, full_name, role, organization, approval_status, ward:wards(name)")
       .eq("email", email)
       .maybeSingle();
 
@@ -48,10 +48,11 @@
 
     return {
       id: result.data.id,
+      authUserId: result.data.auth_user_id || null,
       email: result.data.email,
       name: result.data.full_name,
       role: result.data.role,
-      organization: result.data.role === "bishop" ? "all" : result.data.organization,
+      organization: result.data.role === "bishop" || result.data.role === "parent" || result.data.role === "administrator" ? "all" : result.data.organization,
       approvalStatus: result.data.approval_status,
       ward: result.data.ward?.name || ""
     };
@@ -69,6 +70,30 @@
 
     const existingProfile = await fetchProfileByEmail(client, email);
     if (existingProfile) {
+      if (!existingProfile.authUserId || existingProfile.authUserId !== authUser.id) {
+        const linkResult = await client
+          .from("profiles")
+          .update({ auth_user_id: authUser.id, email })
+          .eq("id", existingProfile.id)
+          .select("id, auth_user_id, email, full_name, role, organization, approval_status, ward:wards(name)")
+          .single();
+
+        if (linkResult.error) {
+          throw linkResult.error;
+        }
+
+        return {
+          id: linkResult.data.id,
+          authUserId: linkResult.data.auth_user_id || null,
+          email: linkResult.data.email,
+          name: linkResult.data.full_name,
+          role: linkResult.data.role,
+            organization: linkResult.data.role === "bishop" || linkResult.data.role === "parent" || linkResult.data.role === "administrator" ? "all" : linkResult.data.organization,
+          approvalStatus: linkResult.data.approval_status,
+          ward: linkResult.data.ward?.name || ""
+        };
+      }
+
       return existingProfile;
     }
 
@@ -76,7 +101,7 @@
     const role = metadata.role;
     const ward = String(metadata.ward || "").trim();
     const fullName = String(metadata.full_name || metadata.fullName || "").trim();
-    const organization = role === "bishop" ? "all" : metadata.organization;
+    const organization = role === "bishop" || role === "parent" || role === "administrator" ? "all" : metadata.organization;
 
     if (!isSelfSignupRoleAllowed(role) || !ward || !fullName || !organization) {
       return null;
@@ -85,11 +110,12 @@
     const wardRecord = await ensureWardRecord(client, ward);
     const profileInsert = await client.from("profiles").upsert({
       id: authUser.id,
+      auth_user_id: authUser.id,
       email,
       full_name: fullName,
       role,
       ward_id: wardRecord.id,
-      organization: role === "bishop" ? "all" : organization,
+      organization: role === "bishop" || role === "parent" || role === "administrator" ? "all" : organization,
       approval_status: getApprovalStatusForRole(role)
     }).select("id, email, full_name, role, organization, approval_status, ward:wards(name)").single();
 
@@ -102,7 +128,7 @@
       email: profileInsert.data.email,
       name: profileInsert.data.full_name,
       role: profileInsert.data.role,
-      organization: profileInsert.data.role === "bishop" ? "all" : profileInsert.data.organization,
+      organization: profileInsert.data.role === "bishop" || profileInsert.data.role === "parent" || profileInsert.data.role === "administrator" ? "all" : profileInsert.data.organization,
       approvalStatus: profileInsert.data.approval_status,
       ward: profileInsert.data.ward?.name || ward
     };
@@ -117,6 +143,10 @@
   }
 
   function getApprovalError(user) {
+    if (user.approvalStatus === "rejected") {
+      return "This account has been disabled by a ward administrator.";
+    }
+
     if (user.role === "youth_leader" && user.approvalStatus !== "approved") {
       return "This Youth leader account is waiting for bishop approval.";
     }
@@ -151,7 +181,7 @@
       }
 
       const newUser = {
-        id: createId(role === "bishop" ? "bishop" : role === "youth_leader" ? "leader" : "youth"),
+        id: createId(role === "administrator" ? "admin" : role === "bishop" ? "bishop" : role === "youth_leader" ? "leader" : role === "parent" ? "parent" : "youth"),
         role,
         name,
         email,

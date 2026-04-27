@@ -25,6 +25,19 @@
       </div>
     </header>
 
+    <div class="account-menu hidden" id="accountMenu">
+      <button class="account-menu-button" id="accountMenuButton" type="button" aria-expanded="false" aria-label="Account menu"></button>
+      <div class="account-menu-panel hidden" id="accountMenuPanel">
+        <div id="sessionView">
+          <div class="session-badge" id="sessionBadge"></div>
+          <h3 id="sessionTitle"></h3>
+          <p id="sessionDescription"></p>
+          <div id="sessionProgressTracker" class="hidden"></div>
+        </div>
+        <button class="ghost-button" id="logoutButton" type="button">Log out</button>
+      </div>
+    </div>
+
     <main class="app-grid">
       <section class="panel auth-panel" id="authPanel">
         <div class="panel-header">
@@ -32,14 +45,15 @@
             <p class="eyebrow">Access</p>
             <h2>Sign in</h2>
           </div>
-          <button class="ghost-button hidden" id="logoutButton" type="button">Log out</button>
         </div>
 
         <div id="loginView">
           <div class="tab-row" role="tablist" aria-label="Login type">
             <button class="tab-button active" id="userTab" type="button">Youth Login</button>
+            <button class="tab-button" id="parentTab" type="button">Parent Login</button>
             <button class="tab-button" id="leaderTab" type="button">Youth Leader Login</button>
             <button class="tab-button" id="bishopTab" type="button">Bishop Login</button>
+            <button class="tab-button" id="adminTab" type="button">Admin Login</button>
           </div>
 
           <div class="subtab-row" id="userAuthModes">
@@ -90,18 +104,17 @@
             <h3>Demo accounts</h3>
             <p><strong>Youth:</strong> <code>josh@example.com</code> / <code>goal123</code></p>
             <p><strong>Youth:</strong> <code>maria@example.com</code> / <code>growth456</code></p>
+            <p><strong>Youth:</strong> <code>eli.roberts@example.com</code> / <code>pocatello1</code></p>
+            <p><strong>Youth:</strong> <code>sophie.martin@example.com</code> / <code>pocatello2</code></p>
+            <p><strong>Parent:</strong> <code>parent.carter@example.com</code> / <code>parent123</code></p>
             <p><strong>Youth leader:</strong> <code>leader.one@example.com</code> / <code>approve789</code> (Young Men)</p>
             <p><strong>Youth leader:</strong> <code>leader.two@example.com</code> / <code>hearts456</code> (Young Women)</p>
             <p><strong>Bishop:</strong> <code>ward.bishop@example.com</code> / <code>steward123</code></p>
+            <p><strong>Bishop:</strong> <code>pocatello.bishop@example.com</code> / <code>steward456</code></p>
+            <p><strong>Admin:</strong> <code>admin@example.com</code> / <code>admin123</code></p>
           </div>
         </div>
 
-        <div id="sessionView" class="hidden">
-          <div class="session-badge" id="sessionBadge"></div>
-          <h3 id="sessionTitle"></h3>
-          <p id="sessionDescription"></p>
-          <div id="sessionProgressTracker" class="hidden"></div>
-        </div>
       </section>
 
       <section class="panel dashboard-panel">
