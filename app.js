@@ -1364,6 +1364,15 @@ async function login(event) {
       state = normalizeState(result.appState);
     }
     state.session = result.session;
+    if (isSupabaseRuntime && result.session?.authMode === "supabase") {
+      try {
+        const reloadedState = await backendClient.loadAppState(STORAGE_KEY, state);
+        state = normalizeState(reloadedState);
+        state.session = result.session;
+      } catch (reloadError) {
+        console.warn("Supabase state reload after login failed.", reloadError);
+      }
+    }
     activeAdminDashboardView = "overview";
     activeYouthDashboardView = "goals";
     saveState();
